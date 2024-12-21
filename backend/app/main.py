@@ -15,18 +15,23 @@ from datetime import datetime
 from werkzeug.utils import secure_filename
 import PyPDF2
 from docx import Document
+from app.utils.file_handler import validate_file, save_file, get_file_metadata
+from app.utils.logger import setup_logger
+from app.config import get_settings
 
 app = FastAPI(title="Biotech Regulatory Compliance Tool")
+logger = setup_logger(__name__)
+settings = get_settings()
 
 # Initialize components
 doc_retrieval = DocumentRetrieval()
 chatbot = Chatbot(doc_retrieval)
 doc_manager = DocumentManager()
 
-# Add CORS middleware
+# Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins for development
+    allow_origins=settings.BACKEND_CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -304,76 +309,35 @@ async def upload_user_document(
     title: str = Form(None),
     description: str = Form("")
 ):
-    print(f"Starting upload process - Title: {title}, Description: {description}, File: {file.filename}")
-    if title is None:
-        title = file.filename
-    
     try:
-        # Create user documents directory if it doesn't exist
-        user_docs_dir = "user_documents"
-        print(f"Creating directory: {user_docs_dir}")
-        os.makedirs(user_docs_dir, exist_ok=True)
-
-        # Create or load user documents database
-        user_docs_db_file = "user_documents.json"
-        print(f"Loading database: {user_docs_db_file}")
-        try:
-            with open(user_docs_db_file, "r") as f:
-                user_docs = json.load(f)
-                print(f"Loaded {len(user_docs)} existing documents")
-        except (FileNotFoundError, json.JSONDecodeError):
-            print("No existing database, starting fresh")
-            user_docs = []
-
-        # Generate unique ID and filename
-        doc_id = str(uuid.uuid4())
-        file_extension = os.path.splitext(file.filename)[1]
-        safe_filename = f"{doc_id}{file_extension}"
-        file_path = os.path.join(user_docs_dir, safe_filename)
-        print(f"Generated file path: {file_path}")
-
-        # Save the file
-        print("Reading file contents...")
-        contents = await file.read()
-        print(f"Received {len(contents)} bytes")
+        # Validate file
+        content_type, content = validate_file(file.file, file.filename)
         
-        print("Writing file to disk...")
-        with open(file_path, "wb") as f:
-            f.write(contents)
-        print("File written successfully")
-
-        # Create document metadata
-        user_doc = {
-            "id": doc_id,
-            "title": title,
-            "description": description,
-            "filename": file.filename,
-            "file_path": file_path,
-            "upload_date": datetime.now().isoformat(),
-            "file_type": file_extension.lstrip('.').lower()
-        }
-        print(f"Created metadata: {user_doc}")
-
-        # Add to database
-        user_docs.append(user_doc)
-        print(f"Saving updated database with {len(user_docs)} documents")
+        # Save file
+        file_path = save_file(content, file.filename, "user_documents")
         
-        with open(user_docs_db_file, "w") as f:
-            json.dump(user_docs, f, indent=2)
-        print("Database updated successfully")
-
-        return {"success": True, "document": user_doc}
+        # Get file metadata
+        metadata = get_file_metadata(file_path)
+        
+        # Process document content
+        doc_retrieval = DocumentRetrieval()
+        doc_id = doc_retrieval.index_document({
+            "content": content.decode('utf-8'),
+            "metadata": {
+                "filename": file.filename,
+                "content_type": content_type,
+                **metadata
+            }
+        })
+        
+        logger.info(f"Document uploaded and processed successfully: {doc_id}")
+        return {"message": "File uploaded successfully", "document_id": doc_id}
+        
     except Exception as e:
-        error_msg = str(e)
-        print(f"Error during upload: {error_msg}")
-        # Clean up file if it was created
-        if 'file_path' in locals() and os.path.exists(file_path):
-            try:
-                os.remove(file_path)
-                print(f"Cleaned up file: {file_path}")
-            except Exception as cleanup_error:
-                print(f"Failed to clean up file: {cleanup_error}")
-        raise HTTPException(status_code=500, detail=error_msg)
+        logger.error(f"Error processing upload: {str(e)}")
+        if isinstance(e, HTTPException):
+            raise e
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/user-documents")
 async def get_user_documents():
