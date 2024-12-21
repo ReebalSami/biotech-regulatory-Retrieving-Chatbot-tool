@@ -14,9 +14,16 @@ from app.utils.exceptions import DocumentNotFoundError, DocumentIndexingError
 logger = setup_logger(__name__)
 
 class DocumentRetrieval:
-    def __init__(self):
+    """Class for handling document retrieval and search."""
+    
+    def __init__(self, persist_dir: str = "./data/chroma"):
+        """
+        Initialize the document retrieval system.
+        
+        Args:
+            persist_dir: Directory to store ChromaDB data
+        """
         # Create the persist directory if it doesn't exist
-        persist_dir = "./data/chroma"
         os.makedirs(persist_dir, exist_ok=True)
         
         try:
@@ -53,84 +60,85 @@ class DocumentRetrieval:
             logger.error(f"Error preparing metadata: {str(e)}")
             raise DocumentIndexingError(f"Failed to prepare document metadata: {str(e)}")
 
-    def index_document(self, document: Dict) -> str:
+    async def index_document(self, file_path: str, doc_id: str, metadata: Dict[str, Any]) -> None:
         """
-        Index a new regulatory document in both ChromaDB and MongoDB
-        """
-        logger.info(f"Starting document indexing process for document: {document.get('title', 'Untitled')}")
+        Index a document for search.
         
+        Args:
+            file_path: Path to the document file
+            doc_id: Document ID
+            metadata: Document metadata
+        """
         try:
-            # Store in MongoDB
-            doc_id = db.store_document(
-                content=document["content"],
-                metadata={
-                    "title": document.get("title", ""),
-                    "category": document.get("category", ""),
-                    "source": document.get("source", ""),
-                    "tags": document.get("tags", []),
-                    "last_updated": document.get("last_updated", "")
-                }
-            )
-            logger.debug(f"Document stored in MongoDB with ID: {doc_id}")
-
-            # Prepare metadata for ChromaDB
-            chroma_metadata = self._prepare_metadata({
-                "source": doc_id,
-                **document.get("metadata", {})
-            })
+            # Extract text content
+            content = await self._extract_text_content(file_path)
             
-            # Index in ChromaDB for semantic search
+            # Clean metadata (convert all values to strings)
+            clean_metadata = {}
+            for key, value in metadata.items():
+                if isinstance(value, (list, tuple)):
+                    clean_metadata[key] = ", ".join(map(str, value))
+                elif isinstance(value, (str, int, float, bool)):
+                    clean_metadata[key] = str(value)
+                else:
+                    clean_metadata[key] = str(value)
+            
+            # Delete if exists
+            try:
+                self.collection.delete(ids=[doc_id])
+            except:
+                pass
+            
+            # Add to ChromaDB
             self.collection.add(
-                documents=[document["content"]],
-                metadatas=[chroma_metadata],
+                documents=[content],
+                metadatas=[clean_metadata],
                 ids=[doc_id]
             )
-            logger.info(f"Document successfully indexed in ChromaDB with ID: {doc_id}")
             
-            return doc_id
-
+            logger.info(f"Document {doc_id} indexed successfully")
         except Exception as e:
-            logger.error(f"Error during document indexing: {str(e)}")
-            # Clean up MongoDB document if ChromaDB indexing fails
-            if 'doc_id' in locals():
-                try:
-                    if isinstance(doc_id, str):
-                        doc_id = ObjectId(doc_id)
-                    db.regulatory_documents.delete_one({'_id': doc_id})
-                    logger.info(f"Cleaned up MongoDB document after failed ChromaDB indexing: {doc_id}")
-                except Exception as cleanup_error:
-                    logger.error(f"Error during cleanup: {str(cleanup_error)}")
-            raise DocumentIndexingError(str(e))
+            logger.error(f"Error indexing document: {str(e)}")
+            raise DocumentIndexingError(f"Failed to index document: {str(e)}")
 
-    def search(self, query: str, n_results: int = 5) -> List[Dict]:
+    async def search(self, query: str, n_results: int = 5) -> List[Dict[str, Any]]:
         """
-        Search for relevant documents using semantic search
+        Search for documents using semantic search.
+        
+        Args:
+            query: Search query
+            n_results: Number of results to return
+            
+        Returns:
+            List of search results with scores
         """
-        logger.info(f"Performing search with query: {query}")
         try:
+            # Search in ChromaDB
             results = self.collection.query(
                 query_texts=[query],
-                n_results=n_results
+                n_results=n_results,
+                include=["documents", "metadatas", "distances"]
             )
             
-            documents = []
-            for doc, meta, dist in zip(
-                results["documents"][0],
-                results["metadatas"][0],
-                results["distances"][0]
-            ):
-                documents.append({
-                    "content": doc,
-                    "metadata": meta,
-                    "score": 1 - dist  # Convert distance to similarity score
-                })
+            # Format results
+            search_results = []
+            if results and results.get("ids") and len(results["ids"][0]) > 0:
+                for i in range(len(results["ids"][0])):
+                    result = {
+                        "id": results["ids"][0][i],
+                        "content": results["documents"][0][i],
+                        "metadata": results["metadatas"][0][i],
+                        "score": 1.0 - float(results["distances"][0][i])  # Convert distance to similarity score
+                    }
+                    search_results.append(result)
             
-            logger.info(f"Search completed. Found {len(documents)} documents")
-            return documents
-
+                # Sort results by score in descending order
+                search_results.sort(key=lambda x: x['score'], reverse=True)
+            
+            return search_results
         except Exception as e:
-            logger.error(f"Error during document search: {str(e)}")
-            raise DocumentIndexingError(f"Search operation failed: {str(e)}")
+            logger.error(f"Error during search: {str(e)}")
+            return []
 
     def calculate_relevance(self, query: str, document_text: str) -> float:
         """Calculate relevance score between query and document text."""
@@ -178,3 +186,37 @@ class DocumentRetrieval:
         except Exception as e:
             logger.error(f"Error in bulk indexing: {str(e)}")
             raise
+
+    def _get_embeddings(self, text: str) -> List[float]:
+        """
+        Get embeddings for text.
+        
+        Args:
+            text: Text to get embeddings for
+            
+        Returns:
+            List of embeddings
+        """
+        try:
+            # Use a simple bag-of-words approach for now
+            # In a real application, you would use a proper embedding model
+            words = text.lower().split()
+            embeddings = [0.0] * 384  # Use 384 dimensions for ChromaDB
+            for i, word in enumerate(words):
+                if i < len(embeddings):
+                    embeddings[i] = hash(word) / 1e10  # Simple hash-based embedding
+            return embeddings
+        except Exception as e:
+            logger.error(f"Error generating embeddings: {str(e)}")
+            raise DocumentIndexingError(f"Failed to generate embeddings: {str(e)}")
+
+    async def _extract_text_content(self, file_path: str) -> str:
+        """Extract text content from a file."""
+        try:
+            # Read text file
+            with open(file_path, "rb") as f:
+                content = f.read().decode("utf-8", errors="ignore")
+            return content
+        except Exception as e:
+            logger.error(f"Error extracting text content: {str(e)}")
+            raise DocumentIndexingError(f"Failed to extract text content: {str(e)}")

@@ -1,53 +1,184 @@
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Query
+from fastapi import FastAPI, File, UploadFile, HTTPException, Query, Form, Body, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
-from typing import List, Optional, Dict
-import io
-import uvicorn
-from app.document_retrieval import DocumentRetrieval
-from app.chatbot import Chatbot
-from app.document_management import DocumentManager
-import os
-import json
-import uuid
+from typing import List, Optional, Dict, Any
 from datetime import datetime
-from werkzeug.utils import secure_filename
-import PyPDF2
-from docx import Document
-from app.utils.file_handler import validate_file, save_file, get_file_metadata
-from app.utils.logger import setup_logger
-from app.config import get_settings
+from pydantic import BaseModel
+import json
+from pathlib import Path
+from app.document_management import DocumentManager
+from app.utils.exceptions import DocumentNotFoundError, InvalidFileTypeError
+from app.chatbot import process_query
 
 app = FastAPI(
-    title="Biotech Regulatory Compliance Tool API",
+    title="Biotech Regulatory Document Management API",
     description="""
-    An API for managing and querying regulatory documents for biotech companies.
-    This tool helps companies navigate complex regulatory requirements and ensure compliance.
+    This API provides comprehensive document management capabilities for biotech regulatory documents.
+    Features include:
+    - Document upload and management
+    - Semantic search across documents
+    - Document versioning
+    - Metadata management
+    - Regulatory compliance tracking
     """,
     version="1.0.0",
     docs_url="/api/docs",
-    redoc_url="/api/redoc",
-    openapi_url="/api/openapi.json"
+    redoc_url="/api/redoc"
 )
 
-logger = setup_logger(__name__)
-settings = get_settings()
-
-# Initialize components
-doc_retrieval = DocumentRetrieval()
-chatbot = Chatbot(doc_retrieval)
-doc_manager = DocumentManager()
-
-# Configure CORS
+# CORS middleware configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.BACKEND_CORS_ORIGINS,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=["*"]
 )
+
+doc_manager = DocumentManager()
+
+async def get_document_manager():
+    """Get document manager instance."""
+    return doc_manager
+
+@app.post("/documents/upload", 
+    response_model=Dict[str, str],
+    tags=["Documents"],
+    summary="Upload a new document",
+    description="""
+    Upload a new regulatory document with metadata.
+    
+    The following file types are supported:
+    - PDF (.pdf)
+    - Word Documents (.doc, .docx)
+    - Text Files (.txt)
+    
+    Required metadata includes:
+    - title: Document title
+    - document_type: Type of document (e.g., 'Regulatory', 'Guidelines')
+    - jurisdiction: Regulatory jurisdiction (e.g., 'US', 'EU')
+    """
+)
+async def upload_document(
+    file: UploadFile = File(..., description="The document file to upload"),
+    title: str = Form(..., description="Document title"),
+    document_type: str = Form(..., description="Type of document"),
+    jurisdiction: str = Form(..., description="Regulatory jurisdiction"),
+    version: Optional[str] = Form("1.0", description="Document version"),
+    categories: Optional[List[str]] = Form(None, description="Document categories"),
+    description: Optional[str] = Form(None, description="Document description")
+):
+    try:
+        doc_id = await doc_manager.upload_document(
+            file=file,
+            title=title,
+            document_type=document_type,
+            jurisdiction=jurisdiction,
+            version=version,
+            categories=categories,
+            description=description
+        )
+        return {"id": doc_id}
+    except InvalidFileTypeError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/documents/{document_id}",
+    tags=["Documents"],
+    summary="Get document by ID",
+    description="Retrieve a document and its metadata by ID"
+)
+async def get_document(document_id: str):
+    try:
+        return doc_manager.get_document(document_id)
+    except DocumentNotFoundError:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+@app.get("/documents",
+    tags=["Documents"],
+    summary="List all documents",
+    description="""
+    List all documents with optional filtering by metadata.
+    
+    Filters can be applied for:
+    - jurisdiction
+    - document_type
+    - categories
+    """
+)
+async def list_documents(
+    jurisdiction: Optional[str] = Query(None, description="Filter by jurisdiction"),
+    document_type: Optional[str] = Query(None, description="Filter by document type"),
+    category: Optional[str] = Query(None, description="Filter by category")
+):
+    filters = {}
+    if jurisdiction:
+        filters["jurisdiction"] = jurisdiction
+    if document_type:
+        filters["document_type"] = document_type
+    if category:
+        filters["categories"] = category
+    
+    return doc_manager.list_documents(filters)
+
+@app.get("/documents/search", response_model=List[Dict[str, Any]], status_code=200)
+async def search_documents(
+    query: str = Query(..., description="Search query"),
+    n_results: Optional[int] = Query(5, description="Number of results to return"),
+    document_manager: DocumentManager = Depends(get_document_manager)
+) -> List[Dict[str, Any]]:
+    """Search for documents using semantic search."""
+    try:
+        results = await document_manager.search_documents(query, n_results)
+        return results if results else []
+    except Exception as e:
+        logger.error(f"Error searching documents: {str(e)}")
+        return []
+
+@app.put("/documents/{document_id}/metadata",
+    tags=["Documents"],
+    summary="Update document metadata",
+    description="Update the metadata of an existing document"
+)
+async def update_document_metadata(
+    document_id: str,
+    metadata: Dict[str, Any] = Body(..., description="Updated metadata fields")
+):
+    try:
+        return doc_manager.update_document_metadata(document_id, metadata)
+    except DocumentNotFoundError:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+@app.delete("/documents/{document_id}",
+    tags=["Documents"],
+    summary="Delete document",
+    description="Delete a document and its associated metadata"
+)
+async def delete_document(document_id: str):
+    try:
+        doc_manager.delete_document(document_id)
+        return {"status": "success"}
+    except DocumentNotFoundError:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+@app.post("/chat",
+    tags=["Chat"],
+    summary="Chat with documents",
+    description="""
+    Ask questions about your regulatory documents.
+    
+    The chatbot will analyze your documents and provide relevant answers
+    based on the content of your regulatory documents.
+    """
+)
+async def chat(
+    query: str = Body(..., embed=True, description="User's question"),
+    context_size: int = Body(3, embed=True, description="Number of relevant documents to consider")
+):
+    try:
+        return await process_query(query, context_size)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 # Data models
 class QuestionnaireInput(BaseModel):
@@ -89,91 +220,6 @@ async def root():
     - None
     """
     return {"message": "Biotech Regulatory Compliance Tool API"}
-
-@app.post("/chat", response_model=ChatResponse)
-async def chat(message: ChatMessage):
-    """
-    Get a response from the AI chatbot.
-    
-    Parameters:
-    - message: The user's question about regulatory requirements
-    - questionnaire_data: Optional JSON string containing questionnaire responses
-    
-    Returns:
-    - AI-generated response based on the query and available documents
-    
-    Raises:
-    - 400: Invalid questionnaire data format
-    - 500: Server error during chat processing
-    """
-    try:
-        # Get chatbot response with questionnaire context
-        response = await chatbot.get_response(
-            message.message,
-            questionnaire_data=message.questionnaire_data
-        )
-        
-        # Get relevant documents used as sources
-        sources = doc_retrieval.search(message.message)
-        
-        # Get user documents
-        try:
-            with open("user_documents.json", "r") as f:
-                user_docs = json.load(f)
-        except FileNotFoundError:
-            user_docs = []
-            
-        # Process user documents
-        user_sources = []
-        for doc in user_docs:
-            try:
-                file_path = doc["file_path"]
-                if os.path.exists(file_path):
-                    # Extract text based on file type
-                    file_extension = os.path.splitext(file_path)[1].lower()
-                    doc_text = ""
-                    
-                    if file_extension == '.pdf':
-                        with open(file_path, 'rb') as file:
-                            pdf_reader = PyPDF2.PdfReader(file)
-                            for page in pdf_reader.pages:
-                                doc_text += page.extract_text() + "\n"
-                    elif file_extension in ['.doc', '.docx']:
-                        doc_obj = Document(file_path)
-                        doc_text = "\n".join([paragraph.text for paragraph in doc_obj.paragraphs])
-                    else:
-                        with open(file_path, 'r') as file:
-                            doc_text = file.read()
-                            
-                    # Add to sources if relevant
-                    relevance_score = doc_retrieval.calculate_relevance(message.message, doc_text)
-                    if relevance_score > 0.3:  # Adjust threshold as needed
-                        user_sources.append({
-                            "title": doc["title"],
-                            "content": doc_text[:200] + "..." if len(doc_text) > 200 else doc_text,
-                            "jurisdiction": "User Document"
-                        })
-            except Exception as e:
-                print(f"Error processing user document {doc.get('title', 'Unknown')}: {str(e)}")
-                continue
-        
-        # Combine sources
-        all_sources = sources + user_sources
-        
-        # Update response to mention user documents if they were used
-        if user_sources:
-            response += "\n\nThis response also considers information from your uploaded documents."
-        
-        return ChatResponse(
-            response=response,
-            sources=[{
-                "title": source.get("title", "Unknown"),
-                "content": source.get("content", "")[:200] + "..." if len(source.get("content", "")) > 200 else source.get("content", ""),
-                "jurisdiction": source.get("jurisdiction", "Unknown")
-            } for source in all_sources]
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/questionnaire")
 async def process_questionnaire(input_data: QuestionnaireInput):
@@ -226,55 +272,6 @@ async def get_guidelines(query: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 # Document Management Endpoints
-@app.post("/documents/upload")
-async def upload_document(
-    file: UploadFile = File(...),
-    title: str = Form(...),
-    document_type: str = Form(...),
-    jurisdiction: str = Form(...),
-    version: str = Form(...),
-    effective_date: str = Form(...),
-    categories: str = Form(""),
-    tags: str = Form("")
-):
-    """
-    Upload a new document with metadata.
-    
-    Parameters:
-    - file: The document file (PDF, DOCX, or TXT)
-    - title: Document title
-    - document_type: Document type (e.g., "Regulatory Guideline", "Clinical Trial Protocol")
-    - jurisdiction: Regulatory jurisdiction (e.g., "EU", "US", "Global")
-    - version: Document version
-    - effective_date: Effective date of the document
-    - categories: Comma-separated categories (e.g., "Medical Devices", "Clinical Trials")
-    - tags: Comma-separated tags
-    
-    Returns:
-    - Success message and document metadata
-    
-    Raises:
-    - 400: Invalid file type or size
-    - 500: Server error during upload
-    """
-    try:
-        categories_list = [c.strip() for c in categories.split(",")] if categories else []
-        tags_list = [t.strip() for t in tags.split(",")] if tags else []
-        
-        result = await doc_manager.upload_document(
-            file=file,
-            title=title,
-            document_type=document_type,
-            jurisdiction=jurisdiction,
-            version=version,
-            effective_date=effective_date,
-            categories=categories_list,
-            tags=tags_list
-        )
-        return result
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
 @app.post("/documents/bulk-upload")
 async def bulk_upload_documents(
     metadata: BulkUploadMetadata,
@@ -316,35 +313,6 @@ async def bulk_delete_documents(request: BulkDeleteRequest):
     - 500: Server error during deletion
     """
     return doc_manager.bulk_delete(request.doc_ids)
-
-@app.get("/documents")
-async def list_documents(
-    document_type: Optional[str] = None,
-    jurisdiction: Optional[str] = None,
-    category: Optional[str] = None,
-    tag: Optional[str] = None
-):
-    """
-    List all documents with optional filtering.
-    
-    Parameters:
-    - document_type: Filter by document type
-    - jurisdiction: Filter by jurisdiction
-    - category: Filter by category
-    - tag: Filter by tag
-    
-    Returns:
-    - List of documents
-    
-    Raises:
-    - 500: Server error during document retrieval
-    """
-    return doc_manager.list_documents(
-        document_type=document_type,
-        jurisdiction=jurisdiction,
-        category=category,
-        tag=tag
-    )
 
 @app.get("/documents/{doc_id}")
 async def get_document(doc_id: str):
