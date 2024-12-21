@@ -1,0 +1,12 @@
+{
+    "title": "Medical Device Classification Guidelines",
+    "content": "This document provides guidelines for the classification of medical devices according to their intended use and risk level.\n\n1. Classification Rules:\n   - Rule 1: All devices that are invasive and come into contact with the central nervous system are classified as Class III\n   - Rule 2: All implantable devices and long-term surgically invasive devices are classified as Class IIb\n   - Rule 3: Devices with a measuring function are classified as Class IIa\n\n2. Risk Assessment Criteria:\n   - Duration of contact with the body\n   - Degree of invasiveness\n   - Local vs. systemic effect\n   - Potential consequences of malfunction\n\n3. Documentation Requirements:\n   - Technical documentation\n   - Clinical evaluation reports\n   - Risk management file\n   - Post-market surveillance plan",
+    "metadata": {
+        "category": "Medical Devices",
+        "source": "EU MDR 2017/745",
+        "tags": ["classification", "risk assessment", "medical devices", "regulatory compliance"],
+        "last_updated": "2023-12-01",
+        "jurisdiction": "European Union",
+        "applicable_standards": ["ISO 14971", "ISO 13485"]
+    }
+}
