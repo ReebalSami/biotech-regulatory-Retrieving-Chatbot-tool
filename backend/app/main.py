@@ -19,7 +19,18 @@ from app.utils.file_handler import validate_file, save_file, get_file_metadata
 from app.utils.logger import setup_logger
 from app.config import get_settings
 
-app = FastAPI(title="Biotech Regulatory Compliance Tool")
+app = FastAPI(
+    title="Biotech Regulatory Compliance Tool API",
+    description="""
+    An API for managing and querying regulatory documents for biotech companies.
+    This tool helps companies navigate complex regulatory requirements and ensure compliance.
+    """,
+    version="1.0.0",
+    docs_url="/api/docs",
+    redoc_url="/api/redoc",
+    openapi_url="/api/openapi.json"
+)
+
 logger = setup_logger(__name__)
 settings = get_settings()
 
@@ -68,10 +79,33 @@ class BulkDeleteRequest(BaseModel):
 
 @app.get("/")
 async def root():
+    """
+    API root endpoint.
+    
+    Returns:
+    - A welcome message
+    
+    Raises:
+    - None
+    """
     return {"message": "Biotech Regulatory Compliance Tool API"}
 
 @app.post("/chat", response_model=ChatResponse)
 async def chat(message: ChatMessage):
+    """
+    Get a response from the AI chatbot.
+    
+    Parameters:
+    - message: The user's question about regulatory requirements
+    - questionnaire_data: Optional JSON string containing questionnaire responses
+    
+    Returns:
+    - AI-generated response based on the query and available documents
+    
+    Raises:
+    - 400: Invalid questionnaire data format
+    - 500: Server error during chat processing
+    """
     try:
         # Get chatbot response with questionnaire context
         response = await chatbot.get_response(
@@ -143,6 +177,18 @@ async def chat(message: ChatMessage):
 
 @app.post("/questionnaire")
 async def process_questionnaire(input_data: QuestionnaireInput):
+    """
+    Process a regulatory questionnaire.
+    
+    Parameters:
+    - input_data: Questionnaire input data
+    
+    Returns:
+    - Success message and processed data
+    
+    Raises:
+    - 500: Server error during questionnaire processing
+    """
     try:
         # TODO: Implement document retrieval based on questionnaire input
         return {
@@ -155,6 +201,18 @@ async def process_questionnaire(input_data: QuestionnaireInput):
 
 @app.get("/guidelines")
 async def get_guidelines(query: str):
+    """
+    Get regulatory guidelines based on a query.
+    
+    Parameters:
+    - query: Search query for guidelines
+    
+    Returns:
+    - List of relevant guidelines
+    
+    Raises:
+    - 500: Server error during guideline retrieval
+    """
     try:
         # TODO: Implement guideline retrieval logic
         sample_guideline = RegulatoryGuideline(
@@ -179,7 +237,26 @@ async def upload_document(
     categories: str = Form(""),
     tags: str = Form("")
 ):
-    """Upload a new document with metadata"""
+    """
+    Upload a new document with metadata.
+    
+    Parameters:
+    - file: The document file (PDF, DOCX, or TXT)
+    - title: Document title
+    - document_type: Document type (e.g., "Regulatory Guideline", "Clinical Trial Protocol")
+    - jurisdiction: Regulatory jurisdiction (e.g., "EU", "US", "Global")
+    - version: Document version
+    - effective_date: Effective date of the document
+    - categories: Comma-separated categories (e.g., "Medical Devices", "Clinical Trials")
+    - tags: Comma-separated tags
+    
+    Returns:
+    - Success message and document metadata
+    
+    Raises:
+    - 400: Invalid file type or size
+    - 500: Server error during upload
+    """
     try:
         categories_list = [c.strip() for c in categories.split(",")] if categories else []
         tags_list = [t.strip() for t in tags.split(",")] if tags else []
@@ -203,7 +280,20 @@ async def bulk_upload_documents(
     metadata: BulkUploadMetadata,
     files: List[UploadFile] = File([])
 ):
-    """Upload multiple documents at once"""
+    """
+    Upload multiple documents at once.
+    
+    Parameters:
+    - metadata: List of document metadata
+    - files: List of document files
+    
+    Returns:
+    - Success message
+    
+    Raises:
+    - 400: Number of files does not match number of metadata entries
+    - 500: Server error during upload
+    """
     if len(files) != len(metadata.metadata_list):
         raise HTTPException(
             status_code=400,
@@ -213,7 +303,18 @@ async def bulk_upload_documents(
 
 @app.post("/documents/bulk-delete")
 async def bulk_delete_documents(request: BulkDeleteRequest):
-    """Delete multiple documents at once"""
+    """
+    Delete multiple documents at once.
+    
+    Parameters:
+    - request: List of document IDs to delete
+    
+    Returns:
+    - Success message
+    
+    Raises:
+    - 500: Server error during deletion
+    """
     return doc_manager.bulk_delete(request.doc_ids)
 
 @app.get("/documents")
@@ -223,7 +324,21 @@ async def list_documents(
     category: Optional[str] = None,
     tag: Optional[str] = None
 ):
-    """List all documents with optional filtering"""
+    """
+    List all documents with optional filtering.
+    
+    Parameters:
+    - document_type: Filter by document type
+    - jurisdiction: Filter by jurisdiction
+    - category: Filter by category
+    - tag: Filter by tag
+    
+    Returns:
+    - List of documents
+    
+    Raises:
+    - 500: Server error during document retrieval
+    """
     return doc_manager.list_documents(
         document_type=document_type,
         jurisdiction=jurisdiction,
@@ -233,7 +348,19 @@ async def list_documents(
 
 @app.get("/documents/{doc_id}")
 async def get_document(doc_id: str):
-    """Get metadata for a specific document"""
+    """
+    Get metadata for a specific document.
+    
+    Parameters:
+    - doc_id: ID of the document to retrieve
+    
+    Returns:
+    - Document metadata
+    
+    Raises:
+    - 404: Document not found
+    - 500: Server error during document retrieval
+    """
     result = doc_manager.get_document_metadata(doc_id)
     if not result:
         raise HTTPException(status_code=404, detail="Document not found")
@@ -241,27 +368,79 @@ async def get_document(doc_id: str):
 
 @app.get("/documents/{doc_id}/preview")
 async def get_document_preview(doc_id: str):
-    """Get document preview content"""
+    """
+    Get document preview content.
+    
+    Parameters:
+    - doc_id: ID of the document to retrieve
+    
+    Returns:
+    - Document preview content
+    
+    Raises:
+    - 404: Document not found
+    - 500: Server error during document retrieval
+    """
     return doc_manager.get_document_preview(doc_id)
 
 @app.get("/documents/{doc_id}/versions")
 async def get_document_versions(doc_id: str):
-    """Get version history for a document"""
+    """
+    Get version history for a document.
+    
+    Parameters:
+    - doc_id: ID of the document to retrieve
+    
+    Returns:
+    - List of document versions
+    
+    Raises:
+    - 404: Document not found
+    - 500: Server error during document retrieval
+    """
     return doc_manager.get_document_versions(doc_id)
 
 @app.get("/documents/categories")
 async def get_categories():
-    """Get all unique categories"""
+    """
+    Get all unique categories.
+    
+    Returns:
+    - List of categories
+    
+    Raises:
+    - 500: Server error during category retrieval
+    """
     return doc_manager.get_categories()
 
 @app.get("/documents/tags")
 async def get_tags():
-    """Get all unique tags"""
+    """
+    Get all unique tags.
+    
+    Returns:
+    - List of tags
+    
+    Raises:
+    - 500: Server error during tag retrieval
+    """
     return doc_manager.get_tags()
 
 @app.get("/documents/export")
 async def export_documents(format: str = Query("json", regex="^(json|csv)$")):
-    """Export document list in various formats"""
+    """
+    Export document list in various formats.
+    
+    Parameters:
+    - format: Export format ("json" or "csv")
+    
+    Returns:
+    - Exported document list
+    
+    Raises:
+    - 400: Invalid export format
+    - 500: Server error during export
+    """
     try:
         content = doc_manager.export_document_list(format)
         
@@ -282,7 +461,19 @@ async def export_documents(format: str = Query("json", regex="^(json|csv)$")):
 
 @app.delete("/documents/{doc_id}")
 async def delete_document(doc_id: str):
-    """Delete a document"""
+    """
+    Delete a document.
+    
+    Parameters:
+    - doc_id: ID of the document to delete
+    
+    Returns:
+    - Success message
+    
+    Raises:
+    - 404: Document not found
+    - 500: Server error during deletion
+    """
     try:
         doc_manager.delete_document(doc_id)
         return {"message": "Document deleted successfully"}
@@ -293,7 +484,20 @@ async def delete_document(doc_id: str):
 
 @app.patch("/documents/{doc_id}")
 async def update_document(doc_id: str, updates: Dict):
-    """Update document metadata"""
+    """
+    Update document metadata.
+    
+    Parameters:
+    - doc_id: ID of the document to update
+    - updates: Dictionary of metadata updates
+    
+    Returns:
+    - Updated document metadata
+    
+    Raises:
+    - 404: Document not found
+    - 500: Server error during update
+    """
     try:
         result = doc_manager.update_document_metadata(doc_id, updates)
         return result
@@ -309,6 +513,21 @@ async def upload_user_document(
     title: str = Form(None),
     description: str = Form("")
 ):
+    """
+    Upload a user document.
+    
+    Parameters:
+    - file: The document file (PDF, DOCX, or TXT)
+    - title: Document title
+    - description: Document description
+    
+    Returns:
+    - Success message and document ID
+    
+    Raises:
+    - 400: Invalid file type or size
+    - 500: Server error during upload
+    """
     try:
         # Validate file
         content_type, content = validate_file(file.file, file.filename)
@@ -341,6 +560,15 @@ async def upload_user_document(
 
 @app.get("/user-documents")
 async def get_user_documents():
+    """
+    Get all user documents.
+    
+    Returns:
+    - List of user documents
+    
+    Raises:
+    - 500: Server error during document retrieval
+    """
     try:
         with open("user_documents.json", "r") as f:
             user_docs = json.load(f)
@@ -352,6 +580,19 @@ async def get_user_documents():
 
 @app.get("/user-documents/{doc_id}/preview")
 async def get_user_document_preview(doc_id: str):
+    """
+    Get user document preview content.
+    
+    Parameters:
+    - doc_id: ID of the document to retrieve
+    
+    Returns:
+    - Document preview content
+    
+    Raises:
+    - 404: Document not found
+    - 500: Server error during document retrieval
+    """
     try:
         # Get document metadata
         with open("user_documents.json", "r") as f:
@@ -390,6 +631,19 @@ async def get_user_document_preview(doc_id: str):
 
 @app.delete("/user-documents/{doc_id}")
 async def delete_user_document(doc_id: str):
+    """
+    Delete a user document.
+    
+    Parameters:
+    - doc_id: ID of the document to delete
+    
+    Returns:
+    - Success message
+    
+    Raises:
+    - 404: Document not found
+    - 500: Server error during deletion
+    """
     try:
         # Read current documents
         with open("user_documents.json", "r") as f:

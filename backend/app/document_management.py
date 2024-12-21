@@ -9,6 +9,9 @@ import PyPDF2
 from docx import Document as DocxDocument
 import hashlib
 from .document_retrieval import DocumentRetrieval
+import logging
+
+logger = logging.getLogger(__name__)
 
 class DocumentManager:
     def __init__(self, base_dir: str = "documents"):
@@ -20,7 +23,8 @@ class DocumentManager:
 
     def _ensure_directory_exists(self):
         """Ensure all necessary directories exist"""
-        self.base_dir.mkdir(parents=True, exist_ok=True)
+        self.base_dir.mkdir(exist_ok=True)
+        self.metadata_file.parent.mkdir(exist_ok=True)
         (self.base_dir / "uploads").mkdir(exist_ok=True)
         (self.base_dir / "versions").mkdir(exist_ok=True)
         (self.base_dir / "previews").mkdir(exist_ok=True)
@@ -69,6 +73,25 @@ class DocumentManager:
             print(f"Error creating preview: {str(e)}")
             return ""
 
+    def _validate_file_size(self, file_path: Path, max_size_mb: int = 10) -> None:
+        """Validate file size"""
+        file_size = file_path.stat().st_size
+        max_size = max_size_mb * 1024 * 1024  # Convert MB to bytes
+        if file_size > max_size:
+            raise HTTPException(
+                status_code=400,
+                detail=f"File size exceeds limit of {max_size_mb}MB"
+            )
+
+    def _validate_file_type(self, file_path: Path) -> None:
+        """Validate file type"""
+        allowed_extensions = {'.pdf', '.doc', '.docx', '.txt'}
+        if file_path.suffix.lower() not in allowed_extensions:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid file type: {file_path.suffix}"
+            )
+
     async def upload_document(self, 
                             file: UploadFile, 
                             title: str,
@@ -77,16 +100,33 @@ class DocumentManager:
                             version: str,
                             effective_date: str,
                             categories: List[str] = None,
-                            tags: List[str] = None) -> Dict:
+                            tags: List[str] = None,
+                            previous_version: str = None) -> str:
         """Upload a new document with metadata and versioning"""
+        file_path = None
         try:
+            # Ensure upload directory exists
+            upload_dir = self.base_dir / "uploads"
+            upload_dir.mkdir(exist_ok=True)
+
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             safe_filename = f"{timestamp}_{file.filename.replace(' ', '_')}"
-            file_path = self.base_dir / "uploads" / safe_filename
+            file_path = upload_dir / safe_filename
 
             # Save file
             with open(file_path, "wb") as buffer:
+                file.file.seek(0)  # Reset file pointer
                 shutil.copyfileobj(file.file, buffer)
+
+            # Validate file
+            self._validate_file_type(file_path)
+            self._validate_file_size(file_path)
+
+            # Extract text content for search
+            content = self._extract_text_content(file_path)
+
+            # Add title to content for better search
+            content = f"{title}\n\n{content}"
 
             # Calculate file hash
             file_hash = self._calculate_file_hash(file_path)
@@ -94,35 +134,46 @@ class DocumentManager:
             # Load existing metadata
             metadata = self._load_metadata()
             
-            # Check if this is a new version of an existing document
-            existing_doc_id = None
-            for doc_id, doc in metadata.items():
-                if doc["title"] == title and doc["document_type"] == document_type:
-                    existing_doc_id = doc_id
-                    break
-
-            if existing_doc_id:
+            # Handle versioning
+            doc_id = None
+            if previous_version:
+                if previous_version not in metadata:
+                    raise HTTPException(
+                        status_code=404,
+                        detail="Previous version not found"
+                    )
+                doc_id = previous_version
                 # Move current version to versions directory
-                current_file = Path(metadata[existing_doc_id]["file_path"])
+                current_file = Path(metadata[previous_version]["file_path"])
                 if current_file.exists():
-                    version_dir = self.base_dir / "versions" / existing_doc_id
+                    version_dir = self.base_dir / "versions" / previous_version
                     version_dir.mkdir(exist_ok=True)
                     shutil.move(
                         current_file,
-                        version_dir / f"v{metadata[existing_doc_id]['version']}_{current_file.name}"
+                        version_dir / f"v{metadata[previous_version]['version']}_{current_file.name}"
                     )
-                doc_id = existing_doc_id
             else:
                 doc_id = f"doc_{timestamp}"
 
             # Create preview
             preview_path = self._create_preview(file_path, doc_id)
 
-            # Extract text content for search
-            content = self._extract_text_content(file_path)
+            # Index document for search
+            doc = self.document_retrieval.index_document({
+                "content": content,
+                "metadata": {
+                    "title": title,
+                    "document_type": document_type,
+                    "jurisdiction": jurisdiction,
+                    "version": version,
+                    "effective_date": effective_date,
+                    "categories": categories or [],
+                    "tags": tags or []
+                }
+            })
 
             # Update metadata
-            metadata[doc_id] = {
+            metadata[doc] = {
                 "title": title,
                 "original_filename": file.filename,
                 "stored_filename": safe_filename,
@@ -136,7 +187,8 @@ class DocumentManager:
                 "file_hash": file_hash,
                 "categories": categories or [],
                 "tags": tags or [],
-                "versions": metadata.get(doc_id, {}).get("versions", []) + [{
+                "previous_version": previous_version,
+                "versions": metadata.get(doc, {}).get("versions", []) + [{
                     "version": version,
                     "upload_date": datetime.now().isoformat(),
                     "file_hash": file_hash
@@ -144,24 +196,15 @@ class DocumentManager:
             }
             self._save_metadata(metadata)
 
-            # Index document for search
-            self.document_retrieval.add_document(
-                doc_id=doc_id,
-                content=content,
-                metadata={
-                    "title": title,
-                    "document_type": document_type,
-                    "jurisdiction": jurisdiction,
-                    "version": version,
-                    "effective_date": effective_date,
-                    "categories": categories or [],
-                    "tags": tags or []
-                }
-            )
+            return doc
 
-            return metadata[doc_id]
-
+        except HTTPException:
+            if file_path and file_path.exists():
+                file_path.unlink()
+            raise
         except Exception as e:
+            if file_path and file_path.exists():
+                file_path.unlink()
             raise HTTPException(status_code=500, detail=f"Error uploading document: {str(e)}")
 
     def get_document_preview(self, doc_id: str) -> str:
@@ -269,7 +312,6 @@ class DocumentManager:
         except (FileNotFoundError, json.JSONDecodeError):
             return {}
 
-    # Existing methods remain unchanged
     def get_document_metadata(self, doc_id: str) -> Optional[Dict]:
         """Get metadata for a specific document"""
         metadata = self._load_metadata()
@@ -326,7 +368,7 @@ class DocumentManager:
         # Remove from search index
         self.document_retrieval.delete_document(doc_id)
 
-    def update_document_metadata(self, doc_id: str, updates: Dict) -> Dict:
+    def update_document_metadata(self, doc_id: str, **updates) -> Dict:
         """Update document metadata"""
         metadata = self._load_metadata()
         if doc_id not in metadata:
@@ -337,9 +379,33 @@ class DocumentManager:
             "title", "document_type", "jurisdiction", 
             "version", "effective_date", "categories", "tags"
         ]
-        for field in allowed_fields:
-            if field in updates:
-                metadata[doc_id][field] = updates[field]
+        for field, value in updates.items():
+            if field in allowed_fields:
+                metadata[doc_id][field] = value
 
         self._save_metadata(metadata)
         return metadata[doc_id]
+
+    def search_documents(self, query: str) -> List[Dict]:
+        """Search documents using the document retrieval system"""
+        try:
+            results = self.document_retrieval.search(query)
+            metadata = self._load_metadata()
+            
+            # Enrich search results with metadata
+            enriched_results = []
+            for result in results:
+                doc_metadata = result.get("metadata", {})
+                enriched_results.append({
+                    "id": doc_metadata.get("source", ""),
+                    "title": doc_metadata.get("title", "Untitled"),
+                    "content": result.get("content", ""),
+                    "score": result.get("score", 0),
+                    "document_type": doc_metadata.get("document_type", "Unknown"),
+                    "jurisdiction": doc_metadata.get("jurisdiction", "Unknown")
+                })
+            
+            return sorted(enriched_results, key=lambda x: x["score"], reverse=True)
+        except Exception as e:
+            logger.error(f"Error during document search: {str(e)}")
+            return []

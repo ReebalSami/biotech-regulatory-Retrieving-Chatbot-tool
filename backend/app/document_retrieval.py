@@ -119,15 +119,11 @@ class DocumentRetrieval:
                 results["metadatas"][0],
                 results["distances"][0]
             ):
-                mongo_doc = db.get_document(meta["source"])
-                if mongo_doc:
-                    documents.append({
-                        "content": doc,
-                        "metadata": mongo_doc.get("metadata", {}),
-                        "score": 1 - dist  # Convert distance to similarity score
-                    })
-                else:
-                    logger.warning(f"Document {meta['source']} found in ChromaDB but missing from MongoDB")
+                documents.append({
+                    "content": doc,
+                    "metadata": meta,
+                    "score": 1 - dist  # Convert distance to similarity score
+                })
             
             logger.info(f"Search completed. Found {len(documents)} documents")
             return documents
@@ -159,6 +155,15 @@ class DocumentRetrieval:
         except Exception as e:
             logger.error(f"Error retrieving document by ID: {str(e)}")
             raise DocumentNotFoundError(f"Document with ID {doc_id} not found")
+
+    def delete_document(self, doc_id: str):
+        """Delete a document from ChromaDB"""
+        try:
+            self.collection.delete(ids=[doc_id])
+            logger.info(f"Document successfully deleted from ChromaDB: {doc_id}")
+        except Exception as e:
+            logger.error(f"Error deleting document from ChromaDB: {str(e)}")
+            raise DocumentIndexingError(f"Failed to delete document: {str(e)}")
 
     def bulk_index_documents(self, directory_path: str):
         """

@@ -5,15 +5,21 @@ import shutil
 from pathlib import Path
 from fastapi import HTTPException, UploadFile
 from app.document_management import DocumentManager
+import json
 
 @pytest.fixture
 def doc_manager():
     """Create a test document manager with a temporary directory"""
     test_dir = Path("test_documents")
+    if test_dir.exists():
+        shutil.rmtree(test_dir)
+    test_dir.mkdir(parents=True)
     manager = DocumentManager(base_dir=str(test_dir))
+    manager._ensure_directory_exists()  # Ensure all subdirectories exist
     yield manager
     # Cleanup after tests
-    shutil.rmtree(test_dir)
+    if test_dir.exists():
+        shutil.rmtree(test_dir)
 
 @pytest.fixture
 def sample_document():
@@ -217,7 +223,9 @@ async def test_upload_invalid_file_type(doc_manager):
                 file=upload_file,
                 title="Invalid File",
                 document_type="Test",
-                jurisdiction="EU"
+                jurisdiction="EU",
+                version="1.0",
+                effective_date=datetime.utcnow().isoformat()
             )
         assert exc_info.value.status_code == 400
         assert "Invalid file type" in str(exc_info.value.detail)
@@ -240,7 +248,9 @@ async def test_upload_large_file(doc_manager):
                 file=upload_file,
                 title="Large File",
                 document_type="Test",
-                jurisdiction="EU"
+                jurisdiction="EU",
+                version="1.0",
+                effective_date=datetime.utcnow().isoformat()
             )
         assert exc_info.value.status_code == 400
         assert "File size exceeds limit" in str(exc_info.value.detail)
@@ -263,7 +273,8 @@ async def test_document_versioning(doc_manager, sample_document):
             title=sample_document["metadata"]["title"],
             document_type=sample_document["metadata"]["document_type"],
             jurisdiction=sample_document["metadata"]["jurisdiction"],
-            version="1.0"
+            version="1.0",
+            effective_date=datetime.utcnow().isoformat()
         )
     
     # Upload new version
@@ -281,6 +292,7 @@ async def test_document_versioning(doc_manager, sample_document):
             document_type=sample_document["metadata"]["document_type"],
             jurisdiction=sample_document["metadata"]["jurisdiction"],
             version="2.0",
+            effective_date=datetime.utcnow().isoformat(),
             previous_version=doc_id
         )
     
@@ -308,7 +320,9 @@ async def test_concurrent_uploads(doc_manager, sample_document):
                 file=upload_file,
                 title=f"Test Document {index}",
                 document_type=sample_document["metadata"]["document_type"],
-                jurisdiction=sample_document["metadata"]["jurisdiction"]
+                jurisdiction=sample_document["metadata"]["jurisdiction"],
+                version=f"1.{index}",
+                effective_date=datetime.utcnow().isoformat()
             )
     
     # Upload 5 documents concurrently
@@ -340,7 +354,9 @@ async def test_update_document_metadata(doc_manager, sample_document):
             file=upload_file,
             title=sample_document["metadata"]["title"],
             document_type=sample_document["metadata"]["document_type"],
-            jurisdiction=sample_document["metadata"]["jurisdiction"]
+            jurisdiction=sample_document["metadata"]["jurisdiction"],
+            version="1.0",
+            effective_date=datetime.utcnow().isoformat()
         )
     
     # Update metadata
@@ -356,6 +372,52 @@ async def test_update_document_metadata(doc_manager, sample_document):
     metadata = doc_manager._load_metadata()
     assert metadata[doc_id]["title"] == new_title
     assert metadata[doc_id]["tags"] == new_tags
+
+@pytest.mark.asyncio
+async def test_document_search(doc_manager, sample_document):
+    """Test document search functionality"""
+    # Upload documents with different content
+    docs_content = [
+        "Medical device regulation in the EU",
+        "FDA guidelines for biotech products",
+        "ISO standards for medical equipment"
+    ]
+
+    for content in docs_content:
+        test_file = doc_manager.base_dir / f"test_{content[:10]}.txt"
+        with open(test_file, "w") as f:
+            f.write(content)
+
+        with open(test_file, "rb") as f:
+            upload_file = UploadFile(
+                filename=test_file.name,
+                file=f
+            )
+            await doc_manager.upload_document(
+                file=upload_file,
+                title=content,  # Use full content as title
+                document_type="Regulatory",
+                jurisdiction="Global",
+                version="1.0",
+                effective_date=datetime.utcnow().isoformat()
+            )
+
+    # Search for documents
+    results = doc_manager.search_documents("medical device regulation")
+    assert len(results) >= 1
+    assert any("medical device" in result["content"].lower() for result in results)
+
+    # Search for FDA documents
+    results = doc_manager.search_documents("FDA guidelines")
+    assert len(results) >= 1
+    
+    # Debug print
+    print("\nSearch Results Structure:")
+    print(json.dumps(results, indent=2))
+    
+    # Check if any result contains the FDA document
+    assert any("FDA guidelines for biotech products" == result["content"] for result in results), \
+        f"Expected to find FDA guidelines document in results"
 
 def test_cleanup_on_upload_failure(doc_manager):
     """Test that temporary files are cleaned up on upload failure"""
@@ -377,39 +439,3 @@ def test_cleanup_on_upload_failure(doc_manager):
     # Verify no temporary files were left
     current_files = set(os.listdir(doc_manager.base_dir))
     assert current_files == initial_files
-
-@pytest.mark.asyncio
-async def test_document_search(doc_manager, sample_document):
-    """Test document search functionality"""
-    # Upload documents with different content
-    docs_content = [
-        "Medical device regulation in the EU",
-        "FDA guidelines for biotech products",
-        "ISO standards for medical equipment"
-    ]
-    
-    for content in docs_content:
-        test_file = doc_manager.base_dir / f"test_{content[:10]}.txt"
-        with open(test_file, "w") as f:
-            f.write(content)
-        
-        with open(test_file, "rb") as f:
-            upload_file = UploadFile(
-                filename=test_file.name,
-                file=f
-            )
-            await doc_manager.upload_document(
-                file=upload_file,
-                title=content[:20],
-                document_type="Regulatory",
-                jurisdiction="Global"
-            )
-    
-    # Search for documents
-    results = doc_manager.search_documents("medical device")
-    assert len(results) >= 1
-    assert any("medical device" in doc["title"].lower() for doc in results)
-    
-    results = doc_manager.search_documents("FDA")
-    assert len(results) >= 1
-    assert any("FDA" in doc["title"] for doc in results)
