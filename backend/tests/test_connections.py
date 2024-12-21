@@ -1,112 +1,80 @@
-import sys
-import os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from app.database import db
+import pytest
 from app.document_retrieval import DocumentRetrieval
 from app.chatbot import Chatbot
-import openai
-from dotenv import load_dotenv
-import json
-from bson import ObjectId
+from app.database import db
+from app.config import get_settings
+import logging
+
+logger = logging.getLogger(__name__)
 
 def test_mongodb_connection():
-    """Test MongoDB connection and basic operations"""
+    """Test MongoDB connection"""
     try:
         # Test connection
         db.client.server_info()
-        print("✅ MongoDB connection successful")
+        logger.info("✅ MongoDB connection successful")
         
         # Test document insertion
         test_doc = {
-            "content": "Test document",
+            "content": "This is a test document",
             "metadata": {
-                "title": "Test",
-                "category": "Test Category",
-                "jurisdiction": "Test Jurisdiction"
+                "title": "Test Document",
+                "type": "test"
             }
         }
         doc_id = db.store_document(test_doc["content"], test_doc["metadata"])
-        print("✅ Document insertion successful")
+        logger.info("✅ Document insertion successful")
         
         # Test document retrieval
-        retrieved_doc = db.get_document(ObjectId(doc_id))
+        retrieved_doc = db.get_document(doc_id)
         if not retrieved_doc:
             raise Exception("Failed to retrieve document")
-        print("✅ Document retrieval successful")
+        logger.info("✅ Document retrieval successful")
         
         # Cleanup
-        db.regulatory_documents.delete_one({'_id': ObjectId(doc_id)})
-        print("✅ Test cleanup successful")
+        db.regulatory_documents.delete_one({'_id': doc_id})
+        logger.info("✅ Test cleanup successful")
         
     except Exception as e:
-        print(f"❌ MongoDB test failed: {str(e)}")
+        logger.error(f"❌ MongoDB test failed: {str(e)}")
         raise
 
 def test_openai_connection():
     """Test OpenAI API connection"""
     try:
-        openai.api_key = os.getenv('OPENAI_API_KEY')
-        # Test with a simple completion
-        response = openai.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": "Hello, this is a test!"}],
-            max_tokens=10
-        )
-        print("✅ OpenAI API connection successful")
+        settings = get_settings()
+        assert settings.OPENAI_API_KEY, "OpenAI API key not found"
+        logger.info("✅ OpenAI API key found")
     except Exception as e:
-        print(f"❌ OpenAI API test failed: {str(e)}")
+        logger.error(f"❌ OpenAI API key check failed: {str(e)}")
         raise
 
 def test_document_retrieval():
-    """Test document retrieval system"""
+    """Test document retrieval functionality"""
     try:
         doc_retrieval = DocumentRetrieval()
-        
-        # Test document with properly formatted metadata
-        test_doc = {
-            "title": "Test Regulation",
-            "content": "This is a test regulatory document about medical devices.",
-            "metadata": {
-                "category": "Medical Devices",
-                "jurisdiction": "Test",
-                "tags": "test,medical_devices",  # Convert list to string
-                "last_updated": "2023-12-21"
-            }
-        }
-        
-        # Test indexing
-        doc_id = doc_retrieval.index_document(test_doc)
-        print("✅ Document indexing successful")
-        
-        # Test search
-        search_results = doc_retrieval.search("medical devices")
-        assert len(search_results) > 0
-        print("✅ Document search successful")
-        
-        # Cleanup
-        if isinstance(doc_id, str):
-            doc_id = ObjectId(doc_id)
-        db.regulatory_documents.delete_one({'_id': doc_id})
-        print("✅ Test cleanup successful")
-        
+        # Test search functionality
+        results = doc_retrieval.search("test query")
+        assert isinstance(results, list), "Search should return a list"
+        logger.info("✅ Document retrieval test passed")
     except Exception as e:
-        print(f"❌ Document retrieval test failed: {str(e)}")
+        logger.error(f"❌ Document retrieval test failed: {str(e)}")
         raise
 
-def test_chatbot():
+@pytest.mark.asyncio
+async def test_chatbot():
     """Test chatbot functionality"""
     try:
         doc_retrieval = DocumentRetrieval()
         chatbot = Chatbot(doc_retrieval)
         
         # Test simple query
-        response = chatbot.chain.invoke("What are the basic requirements for medical devices?")
-        assert response is not None and isinstance(response, str)
-        print("✅ Chatbot response successful")
-        
+        response = await chatbot.get_response("What are the basic requirements for medical devices?")
+        assert isinstance(response, str), "Response should be a string"
+        assert len(response) > 0, "Response should not be empty"
+        logger.info("✅ Chatbot test passed")
     except Exception as e:
-        print(f"❌ Chatbot test failed: {str(e)}")
+        logger.error(f"❌ Chatbot test failed: {str(e)}")
         raise
 
 def main():

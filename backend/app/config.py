@@ -26,8 +26,11 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
     
     class Config:
-        case_sensitive = True
-        env_file = ".env"
+        model_config = {
+            "case_sensitive": True,
+            "env_file": ".env",
+            "extra": "allow"
+        }
 
 @lru_cache()
 def get_settings() -> Settings:

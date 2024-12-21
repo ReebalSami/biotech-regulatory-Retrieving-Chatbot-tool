@@ -1,78 +1,81 @@
-from typing import List, Dict
-import openai
+from typing import Dict
 from langchain_openai import ChatOpenAI
-from langchain_core.prompts import PromptTemplate
-from langchain_core.output_parsers import StrOutputParser
-from langchain_core.runnables import RunnablePassthrough
+from langchain_core.messages import SystemMessage, HumanMessage
 from app.document_retrieval import DocumentRetrieval
+from app.config import get_settings
+import logging
+
+logger = logging.getLogger(__name__)
+settings = get_settings()
 
 class Chatbot:
     def __init__(self, document_retrieval: DocumentRetrieval):
         self.document_retrieval = document_retrieval
-        self.llm = ChatOpenAI(temperature=0.7, model="gpt-3.5-turbo")
-        
-        template = """You are an AI assistant helping with regulatory compliance for biotech companies.
-        Use the following pieces of context to answer the question at the end.
-        If you don't know the answer, just say that you don't know, don't try to make up an answer.
-        
-        Questionnaire Context:
-        {questionnaire_context}
-        
-        Document Context:
-        {document_context}
-        
-        Question: {question}
-        
-        Based on the questionnaire context and available documents, provide a tailored response that specifically addresses the user's situation.
-        If certain requirements are particularly relevant to their case (based on the questionnaire data), emphasize those points.
-        
-        Answer:"""
-        
-        self.prompt = PromptTemplate.from_template(template)
-        
-        # Create the chain
-        self.chain = (
-            {
-                "document_context": self.get_relevant_context,
-                "question": RunnablePassthrough(),
-                "questionnaire_context": lambda x: self.format_questionnaire_context(x.get("questionnaire_data", {}))
-            }
-            | self.prompt
-            | self.llm
-            | StrOutputParser()
+        self.llm = ChatOpenAI(
+            model="gpt-4-1106-preview",
+            temperature=0.7,
+            api_key=settings.OPENAI_API_KEY
         )
-
-    def format_questionnaire_context(self, questionnaire_data: Dict) -> str:
-        """Format questionnaire data into a readable string"""
+    
+    def format_questionnaire_context(self, questionnaire_data: dict) -> str:
+        """Format questionnaire data into a readable context"""
         if not questionnaire_data:
-            return "No questionnaire data provided."
-            
-        context_parts = [
-            f"Product Purpose: {questionnaire_data.get('intended_purpose', 'Not specified')}",
-            f"Life-threatening Use: {'Yes' if questionnaire_data.get('life_threatening') else 'No'}",
-            f"User Type: {questionnaire_data.get('user_type', 'Not specified')}",
-            f"Requires Sterilization: {'Yes' if questionnaire_data.get('requires_sterilization') else 'No'}",
-            f"Body Contact Duration: {questionnaire_data.get('body_contact_duration', 'Not specified')}"
-        ]
+            return "No questionnaire data available."
         
-        return "\n".join(context_parts)
-
+        context = []
+        for key, value in questionnaire_data.items():
+            if isinstance(value, (list, tuple)):
+                context.append(f"{key}: {', '.join(value)}")
+            else:
+                context.append(f"{key}: {value}")
+        
+        return "\n".join(context)
+    
     def get_relevant_context(self, query: str) -> str:
-        """Get relevant documents for the query"""
-        documents = self.document_retrieval.search(query)
-        if not documents:
-            return "No relevant documents found."
-        return "\n\n".join([f"Document {i+1}:\n{doc['content']}" 
-                           for i, doc in enumerate(documents)])
+        """Get relevant document context for the query"""
+        try:
+            documents = self.document_retrieval.search(query)
+            if not documents:
+                return "No relevant documents found."
+            
+            context = []
+            for doc in documents:
+                context.append(f"Document: {doc.get('title', 'Untitled')}\n{doc.get('content', '')}\n")
+            
+            return "\n".join(context)
+        except Exception as e:
+            logger.error(f"Error retrieving document context: {str(e)}")
+            return "Error retrieving document context."
 
     async def get_response(self, query: str, questionnaire_data: Dict = None) -> str:
         """Get a response from the chatbot"""
         try:
-            response = self.chain.invoke({
-                "question": query,
-                "questionnaire_data": questionnaire_data or {}
-            })
-            return response
+            # Get contexts
+            questionnaire_context = self.format_questionnaire_context(questionnaire_data or {})
+            document_context = self.get_relevant_context(query)
+            
+            # Create messages
+            messages = [
+                SystemMessage(content=f"""You are an AI assistant specializing in biotech regulations. 
+                Use the following context to answer the user's question:
+                
+                Questionnaire Context:
+                {questionnaire_context}
+                
+                Document Context:
+                {document_context}
+                
+                Remember to:
+                1. Be accurate and precise
+                2. Cite specific regulations when possible
+                3. Acknowledge if information is incomplete or uncertain"""),
+                HumanMessage(content=query)
+            ]
+            
+            # Get response
+            response = await self.llm.ainvoke(messages)
+            return response.content
+            
         except Exception as e:
-            print(f"Error getting chatbot response: {str(e)}")
+            logger.error(f"Error getting chatbot response: {str(e)}")
             return "I apologize, but I encountered an error while processing your request. Please try again."
