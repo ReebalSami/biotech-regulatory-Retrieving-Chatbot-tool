@@ -1,14 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Box,
   Paper,
   Typography,
   Button,
   TextField,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
+  Modal,
   Table,
   TableBody,
   TableCell,
@@ -32,6 +29,7 @@ const DocumentManager = () => {
   const [previewDocument, setPreviewDocument] = useState(null);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
+  const uploadButtonRef = useRef(null);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -57,8 +55,6 @@ const DocumentManager = () => {
 
   const handleUpload = async () => {
     try {
-      console.log('Starting upload...', formData);
-
       if (!formData.file) {
         setError('Please select a file to upload');
         return;
@@ -83,14 +79,6 @@ const DocumentManager = () => {
       uploadData.append('title', formData.title || formData.file.name);
       uploadData.append('description', formData.description || '');
 
-      console.log('FormData contents:', {
-        fileName: formData.file.name,
-        fileSize: formData.file.size,
-        fileType: formData.file.type,
-        title: formData.title || formData.file.name,
-        description: formData.description || ''
-      });
-
       const response = await fetch('http://localhost:8000/user-documents/upload', {
         method: 'POST',
         headers: {
@@ -99,12 +87,8 @@ const DocumentManager = () => {
         body: uploadData,
         mode: 'cors',
       });
-
-      console.log('Upload response status:', response.status);
-      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
       
       const responseText = await response.text();
-      console.log('Raw response:', responseText);
       
       if (!response.ok) {
         let errorMessage;
@@ -118,12 +102,22 @@ const DocumentManager = () => {
       }
 
       const result = JSON.parse(responseText);
-      console.log('Upload response:', result);
 
-      setSuccess('Document uploaded successfully');
-      setOpenUpload(false);
+      // Reset form and close dialog
       setFormData({ title: '', description: '', file: null });
-      fetchDocuments();
+      setOpenUpload(false);
+      
+      // Fetch updated documents
+      await fetchDocuments();
+
+      // Return focus to the main upload button before showing success message
+      if (uploadButtonRef.current) {
+        uploadButtonRef.current.focus();
+        // Small delay before showing success to ensure focus is set
+        setTimeout(() => {
+          setSuccess('Document uploaded successfully');
+        }, 100);
+      }
     } catch (error) {
       console.error('Upload error:', error);
       setError('Failed to upload document: ' + error.message);
@@ -161,9 +155,18 @@ const DocumentManager = () => {
           </Typography>
         </Box>
         <Button
+          ref={uploadButtonRef}
           variant="contained"
           startIcon={<AddIcon />}
           onClick={() => setOpenUpload(true)}
+          aria-label="upload document"
+          aria-haspopup="dialog"
+          sx={{
+            '&:focus-visible': {
+              outline: '2px solid #1976d2',
+              outlineOffset: '2px'
+            }
+          }}
         >
           Upload Document
         </Button>
@@ -217,50 +220,101 @@ const DocumentManager = () => {
         </TableContainer>
       )}
 
-      {/* Upload Dialog */}
-      <Dialog open={openUpload} onClose={() => setOpenUpload(false)}>
-        <DialogTitle>Upload Supporting Document</DialogTitle>
-        <DialogContent>
-          <Box sx={{ mt: 2 }}>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              Upload documents to provide additional context for your conversation with the chatbot.
-              These documents will be used to better understand your specific case.
-            </Typography>
-            <TextField
-              fullWidth
-              label="Title"
-              value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              sx={{ mb: 2 }}
-            />
-            <TextField
-              fullWidth
-              label="Description"
-              multiline
-              rows={3}
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              sx={{ mb: 2 }}
-            />
-            <input
-              type="file"
-              accept=".pdf,.doc,.docx,.txt"
-              onChange={(e) => setFormData({ ...formData, file: e.target.files[0] })}
-              style={{ marginBottom: '16px' }}
-            />
+      {/* Upload Modal */}
+      <Modal
+        open={openUpload}
+        onClose={() => {
+          setOpenUpload(false);
+          setFormData({ title: '', description: '', file: null });
+          if (uploadButtonRef.current) {
+            uploadButtonRef.current.focus();
+          }
+        }}
+        aria-labelledby="upload-modal-title"
+        keepMounted={false}
+      >
+        <Box
+          sx={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: 400,
+            bgcolor: 'background.paper',
+            borderRadius: 1,
+            boxShadow: 24,
+            p: 4,
+          }}
+          component="form"
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleUpload();
+          }}
+        >
+          <Typography id="upload-modal-title" variant="h6" component="h2" gutterBottom>
+            Upload Supporting Document
+          </Typography>
+          
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Upload documents to provide additional context for your conversation with the chatbot.
+            These documents will be used to better understand your specific case.
+          </Typography>
+          
+          <TextField
+            fullWidth
+            label="Title"
+            value={formData.title}
+            onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+            sx={{ mb: 2 }}
+            id="document-title"
+            aria-label="Document title"
+          />
+          
+          <TextField
+            fullWidth
+            label="Description"
+            multiline
+            rows={3}
+            value={formData.description}
+            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+            sx={{ mb: 2 }}
+            id="document-description"
+            aria-label="Document description"
+          />
+          
+          <input
+            type="file"
+            accept=".pdf,.doc,.docx,.txt"
+            onChange={(e) => setFormData({ ...formData, file: e.target.files[0] })}
+            style={{ marginBottom: '16px', display: 'block' }}
+            id="document-file"
+            aria-label="Choose document file"
+          />
+          
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, mt: 2 }}>
+            <Button
+              onClick={() => {
+                setOpenUpload(false);
+                setFormData({ title: '', description: '', file: null });
+                if (uploadButtonRef.current) {
+                  uploadButtonRef.current.focus();
+                }
+              }}
+              aria-label="Cancel upload"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="contained"
+              disabled={!formData.file}
+              type="submit"
+              aria-label="Upload document"
+            >
+              Upload
+            </Button>
           </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenUpload(false)}>Cancel</Button>
-          <Button 
-            onClick={handleUpload}
-            variant="contained"
-            disabled={!formData.file}
-          >
-            Upload
-          </Button>
-        </DialogActions>
-      </Dialog>
+        </Box>
+      </Modal>
 
       {/* Document Preview Dialog */}
       <DocumentPreview
@@ -274,15 +328,42 @@ const DocumentManager = () => {
         open={!!error}
         autoHideDuration={6000}
         onClose={() => setError(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
       >
-        <Alert severity="error">{error}</Alert>
+        <Alert 
+          onClose={() => setError(null)} 
+          severity="error" 
+          sx={{ width: '100%' }}
+          variant="filled"
+        >
+          {error}
+        </Alert>
       </Snackbar>
       <Snackbar
         open={!!success}
-        autoHideDuration={6000}
+        autoHideDuration={4000}
         onClose={() => setSuccess(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+        sx={{
+          '& .MuiSnackbar-root': {
+            position: 'relative'
+          }
+        }}
       >
-        <Alert severity="success">{success}</Alert>
+        <Alert 
+          onClose={() => {
+            setSuccess(null);
+            // Return focus to upload button when alert closes
+            if (uploadButtonRef.current) {
+              uploadButtonRef.current.focus();
+            }
+          }}
+          severity="success"
+          sx={{ width: '100%' }}
+          variant="filled"
+        >
+          {success}
+        </Alert>
       </Snackbar>
     </Box>
   );

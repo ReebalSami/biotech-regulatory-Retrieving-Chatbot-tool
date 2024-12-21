@@ -111,14 +111,43 @@ function App() {
             value={currentTab}
             onChange={handleTabChange}
             centered
+            TabIndicatorProps={{
+              'aria-hidden': 'false'
+            }}
+            sx={{
+              '& .MuiTabs-flexContainer': {
+                outline: 'none'
+              }
+            }}
           >
-            <Tab label="Questionnaire" />
-            <Tab label="Regulatory Guidelines" />
-            <Tab label="Documents" />
-            <Tab label="Chat Assistant" />
+            <Tab 
+              label="Questionnaire" 
+              id="tab-0"
+              aria-controls="tabpanel-0"
+            />
+            <Tab 
+              label="Regulatory Guidelines" 
+              id="tab-1"
+              aria-controls="tabpanel-1"
+            />
+            <Tab 
+              label="Documents" 
+              id="tab-2"
+              aria-controls="tabpanel-2"
+            />
+            <Tab 
+              label="Chat Assistant" 
+              id="tab-3"
+              aria-controls="tabpanel-3"
+            />
           </Tabs>
 
-          <Box sx={{ mt: 3 }}>
+          <Box 
+            sx={{ mt: 3 }}
+            role="tabpanel"
+            id={`tabpanel-${currentTab}`}
+            aria-labelledby={`tab-${currentTab}`}
+          >
             {currentTab === 0 && (
               <Questionnaire onSubmit={handleQuestionnaireSubmit} />
             )}
