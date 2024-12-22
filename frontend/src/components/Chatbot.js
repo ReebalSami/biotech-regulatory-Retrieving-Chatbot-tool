@@ -92,7 +92,7 @@ const ChatContainer = styled(Box)(({ theme }) => ({
   height: '100%',
   backgroundColor: theme.palette.background.default,
   borderRadius: theme.shape.borderRadius * 2,
-  overflow: 'hidden',
+  position: 'relative',
 }));
 
 const MessageList = styled(Box)(({ theme }) => ({
@@ -117,6 +117,9 @@ const InputContainer = styled(Box)(({ theme }) => ({
   borderTop: `1px solid ${theme.palette.divider}`,
   backgroundColor: theme.palette.background.paper,
   backdropFilter: 'blur(10px)',
+  position: 'sticky',
+  bottom: 0,
+  zIndex: 1,
 }));
 
 const TypingIndicator = styled(Box)(({ theme }) => ({

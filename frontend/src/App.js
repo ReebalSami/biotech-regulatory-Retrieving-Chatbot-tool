@@ -144,10 +144,27 @@ function TabPanel(props) {
       id={`tabpanel-${index}`}
       aria-labelledby={`tab-${index}`}
       {...other}
-      style={{ height: '100%' }}
+      style={{ 
+        height: '100%',
+        display: value === index ? 'block' : 'none',
+        overflow: 'hidden'
+      }}
     >
       {value === index && (
-        <Box sx={{ height: '100%', pt: 2 }}>
+        <Box sx={{ 
+          height: '100%',
+          overflow: 'auto',
+          '::-webkit-scrollbar': {
+            width: '8px',
+          },
+          '::-webkit-scrollbar-track': {
+            background: 'transparent',
+          },
+          '::-webkit-scrollbar-thumb': {
+            background: (theme) => theme.palette.divider,
+            borderRadius: '4px',
+          },
+        }}>
           {children}
         </Box>
       )}
@@ -182,10 +199,11 @@ function App() {
             bgcolor: 'background.paper',
             borderRadius: 4,
             boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column',
             height: 'calc(100vh - 48px)'
           }}>
-            <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+            <Box sx={{ borderBottom: 1, borderColor: 'divider', flexShrink: 0 }}>
               <Tabs 
                 value={value} 
                 onChange={handleChange} 
@@ -209,15 +227,17 @@ function App() {
                 />
               </Tabs>
             </Box>
-            <TabPanel value={value} index={0}>
-              <Questionnaire onSubmit={handleQuestionnaireSubmit} />
-            </TabPanel>
-            <TabPanel value={value} index={1}>
-              <RegulatoryDisplay guidelines={guidelines} />
-            </TabPanel>
-            <TabPanel value={value} index={2}>
-              <Chatbot />
-            </TabPanel>
+            <Box sx={{ flexGrow: 1, overflow: 'hidden' }}>
+              <TabPanel value={value} index={0}>
+                <Questionnaire onSubmit={handleQuestionnaireSubmit} />
+              </TabPanel>
+              <TabPanel value={value} index={1}>
+                <RegulatoryDisplay guidelines={guidelines} />
+              </TabPanel>
+              <TabPanel value={value} index={2}>
+                <Chatbot />
+              </TabPanel>
+            </Box>
           </Box>
         </Container>
       </Box>
