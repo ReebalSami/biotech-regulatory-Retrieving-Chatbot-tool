@@ -1,0 +1,251 @@
+{
+  "4491a771-0338-42db-b4e6-927d52bb64a7": {
+    "id": "4491a771-0338-42db-b4e6-927d52bb64a7",
+    "filename": "eu_mdr_2017_745.txt",
+    "title": "EU MDR 2017/745",
+    "description": "European Medical Device Regulation",
+    "categories": [
+      "EU MDR",
+      "Medical Devices",
+      "Regulations"
+    ],
+    "document_type": "reference",
+    "chat_id": null,
+    "upload_date": "2024-12-22T02:01:34.529815",
+    "file_path": "data/reference_documents/4491a771-0338-42db-b4e6-927d52bb64a7_eu_mdr_2017_745.txt"
+  },
+  "3039ffdc-41fc-42b0-bb32-ebe49eabb0ea": {
+    "id": "3039ffdc-41fc-42b0-bb32-ebe49eabb0ea",
+    "filename": "DIN EN ISO 13482.pdf",
+    "title": "Din En Iso 13482",
+    "description": "Uploaded from regulatory_documents",
+    "categories": [
+      "Regulations"
+    ],
+    "document_type": "REFERENCE",
+    "chat_id": null,
+    "upload_date": "2024-12-22T02:27:25.166124",
+    "file_path": "data/reference_documents/3039ffdc-41fc-42b0-bb32-ebe49eabb0ea_DIN EN ISO 13482.pdf"
+  },
+  "7e045fac-755a-4727-bb2d-0c3cb30e7095": {
+    "id": "7e045fac-755a-4727-bb2d-0c3cb30e7095",
+    "filename": "BS EN ISO 10993-10_2010 - libgen.li.pdf",
+    "title": "Bs En Iso 10993-10 2010 - Libgen.Li",
+    "description": "Uploaded from regulatory_documents",
+    "categories": [
+      "Regulations"
+    ],
+    "document_type": "REFERENCE",
+    "chat_id": null,
+    "upload_date": "2024-12-22T02:27:25.182040",
+    "file_path": "data/reference_documents/7e045fac-755a-4727-bb2d-0c3cb30e7095_BS EN ISO 10993-10_2010 - libgen.li.pdf"
+  },
+  "6059b2f1-8c98-47b1-99df-7b9bbacc8dfe": {
+    "id": "6059b2f1-8c98-47b1-99df-7b9bbacc8dfe",
+    "filename": "BS EN ISO 80601-2-13_2012 - libgen.li.pdf",
+    "title": "Bs En Iso 80601-2-13 2012 - Libgen.Li",
+    "description": "Uploaded from regulatory_documents",
+    "categories": [
+      "Regulations"
+    ],
+    "document_type": "REFERENCE",
+    "chat_id": null,
+    "upload_date": "2024-12-22T02:27:25.212249",
+    "file_path": "data/reference_documents/6059b2f1-8c98-47b1-99df-7b9bbacc8dfe_BS EN ISO 80601-2-13_2012 - libgen.li.pdf"
+  },
+  "1bf7e6c2-3ebe-44e5-8545-0a6335329066": {
+    "id": "1bf7e6c2-3ebe-44e5-8545-0a6335329066",
+    "filename": "ISO 10993-1.pdf",
+    "title": "Iso 10993-1",
+    "description": "Uploaded from regulatory_documents",
+    "categories": [
+      "Regulations"
+    ],
+    "document_type": "REFERENCE",
+    "chat_id": null,
+    "upload_date": "2024-12-22T02:27:25.254821",
+    "file_path": "data/reference_documents/1bf7e6c2-3ebe-44e5-8545-0a6335329066_ISO 10993-1.pdf"
+  },
+  "9c7fb9a6-653f-46f6-b11c-fc0d7585e53e": {
+    "id": "9c7fb9a6-653f-46f6-b11c-fc0d7585e53e",
+    "filename": "ISO 10993-11_2006 Biological evaluation of medical devices -- Part 11_ Tests for systemic toxicity - libgen.li.pdf",
+    "title": "Iso 10993-11 2006 Biological Evaluation Of Medical Devices -- Part 11  Tests For Systemic Toxicity - Libgen.Li",
+    "description": "Uploaded from regulatory_documents",
+    "categories": [
+      "Regulations"
+    ],
+    "document_type": "REFERENCE",
+    "chat_id": null,
+    "upload_date": "2024-12-22T02:27:25.261267",
+    "file_path": "data/reference_documents/9c7fb9a6-653f-46f6-b11c-fc0d7585e53e_ISO 10993-11_2006 Biological evaluation of medical devices -- Part 11_ Tests for systemic toxicity - libgen.li.pdf"
+  },
+  "fd9cae9f-4fb1-42e9-b185-cd24cc3611f4": {
+    "id": "fd9cae9f-4fb1-42e9-b185-cd24cc3611f4",
+    "filename": "ISO 10993-5_2009 Biological evaluation of medical devices -- Part 5_ Tests for in vitro cytotoxicity - libgen.li.pdf",
+    "title": "Iso 10993-5 2009 Biological Evaluation Of Medical Devices -- Part 5  Tests For In Vitro Cytotoxicity - Libgen.Li",
+    "description": "Uploaded from regulatory_documents",
+    "categories": [
+      "Regulations"
+    ],
+    "document_type": "REFERENCE",
+    "chat_id": null,
+    "upload_date": "2024-12-22T02:27:25.268222",
+    "file_path": "data/reference_documents/fd9cae9f-4fb1-42e9-b185-cd24cc3611f4_ISO 10993-5_2009 Biological evaluation of medical devices -- Part 5_ Tests for in vitro cytotoxicity - libgen.li.pdf"
+  },
+  "cac48fbd-f52a-46ed-95e0-396ddf57cba4": {
+    "id": "cac48fbd-f52a-46ed-95e0-396ddf57cba4",
+    "filename": "Biological evaluation of medical device -- INTERNATIONAL STANDARD -- ISO 10993-1, 0 -- df1e13d7ca5b556d9306505cf4152955 -- Anna\u2019s Archive.pdf",
+    "title": "Biological Evaluation Of Medical Device -- International Standard -- Iso 10993-1, 0 -- Df1E13D7Ca5B556D9306505Cf4152955 -- Anna\u2019S Archive",
+    "description": "Uploaded from regulatory_documents",
+    "categories": [
+      "Regulations"
+    ],
+    "document_type": "REFERENCE",
+    "chat_id": null,
+    "upload_date": "2024-12-22T02:27:25.278468",
+    "file_path": "data/reference_documents/cac48fbd-f52a-46ed-95e0-396ddf57cba4_Biological evaluation of medical device -- INTERNATIONAL STANDARD -- ISO 10993-1, 0 -- df1e13d7ca5b556d9306505cf4152955 -- Anna\u2019s Archive.pdf"
+  },
+  "b6a2ab88-9dd7-4fe4-90dc-cd8f319e364d": {
+    "id": "b6a2ab88-9dd7-4fe4-90dc-cd8f319e364d",
+    "filename": "ISO 10993-5.pdf",
+    "title": "Iso 10993-5",
+    "description": "Uploaded from regulatory_documents",
+    "categories": [
+      "Regulations"
+    ],
+    "document_type": "REFERENCE",
+    "chat_id": null,
+    "upload_date": "2024-12-22T02:27:25.294852",
+    "file_path": "data/reference_documents/b6a2ab88-9dd7-4fe4-90dc-cd8f319e364d_ISO 10993-5.pdf"
+  },
+  "938a2d3d-05c7-4ea8-bb65-6ac2914f8604": {
+    "id": "938a2d3d-05c7-4ea8-bb65-6ac2914f8604",
+    "filename": "BS EN ISO 10993-3_2014 Biological evaluation of medical devices. Tests for genotoxicity, carcinogenicity and reproductive toxici - libgen.li.pdf",
+    "title": "Bs En Iso 10993-3 2014 Biological Evaluation Of Medical Devices. Tests For Genotoxicity, Carcinogenicity And Reproductive Toxici - Libgen.Li",
+    "description": "Uploaded from regulatory_documents",
+    "categories": [
+      "Regulations"
+    ],
+    "document_type": "REFERENCE",
+    "chat_id": null,
+    "upload_date": "2024-12-22T02:27:25.326084",
+    "file_path": "data/reference_documents/938a2d3d-05c7-4ea8-bb65-6ac2914f8604_BS EN ISO 10993-3_2014 Biological evaluation of medical devices. Tests for genotoxicity, carcinogenicity and reproductive toxici - libgen.li.pdf"
+  },
+  "95bf8eca-6648-48fe-931c-685f62a76999": {
+    "id": "95bf8eca-6648-48fe-931c-685f62a76999",
+    "filename": "DIN EN ISO 14971.pdf",
+    "title": "Din En Iso 14971",
+    "description": "Uploaded from regulatory_documents",
+    "categories": [
+      "Regulations"
+    ],
+    "document_type": "REFERENCE",
+    "chat_id": null,
+    "upload_date": "2024-12-22T02:27:25.360844",
+    "file_path": "data/reference_documents/95bf8eca-6648-48fe-931c-685f62a76999_DIN EN ISO 14971.pdf"
+  },
+  "84097c66-df1e-4909-9b40-8dd7b7fc59b3": {
+    "id": "84097c66-df1e-4909-9b40-8dd7b7fc59b3",
+    "filename": "DIN EN 60601-1-8 VDE 0750-1-8_2008-02 Medizinische elektrische GerA\u0303\u00a4te -Teil 1-8_ Allgemeine Festlegungen fA\u0303\u00bcr die Sicherheit eins - libgen.li.pdf",
+    "title": "Din En 60601-1-8 Vde 0750-1-8 2008-02 Medizinische Elektrische Gera\u0303\u00a4Te -Teil 1-8  Allgemeine Festlegungen Fa\u0303\u00bcR Die Sicherheit Eins - Libgen.Li",
+    "description": "Uploaded from regulatory_documents",
+    "categories": [
+      "Regulations"
+    ],
+    "document_type": "REFERENCE",
+    "chat_id": null,
+    "upload_date": "2024-12-22T02:27:25.370720",
+    "file_path": "data/reference_documents/84097c66-df1e-4909-9b40-8dd7b7fc59b3_DIN EN 60601-1-8 VDE 0750-1-8_2008-02 Medizinische elektrische GerA\u0303\u00a4te -Teil 1-8_ Allgemeine Festlegungen fA\u0303\u00bcr die Sicherheit eins - libgen.li.pdf"
+  },
+  "1859a235-4c13-49c5-b153-b7fcb635a427": {
+    "id": "1859a235-4c13-49c5-b153-b7fcb635a427",
+    "filename": "DIN EN ISO 23894.pdf",
+    "title": "Din En Iso 23894",
+    "description": "Uploaded from regulatory_documents",
+    "categories": [
+      "Regulations"
+    ],
+    "document_type": "REFERENCE",
+    "chat_id": null,
+    "upload_date": "2024-12-22T02:27:25.389102",
+    "file_path": "data/reference_documents/1859a235-4c13-49c5-b153-b7fcb635a427_DIN EN ISO 23894.pdf"
+  },
+  "e8de4cac-db29-4770-bd91-e0dd743aeda4": {
+    "id": "e8de4cac-db29-4770-bd91-e0dd743aeda4",
+    "filename": "Biological evaluation of medical devices_ Selection of tests -- The British Standards Institution -- 2017 -- BSI British Standards Institution -- 9780580844577 -- fa699398d689736dfc992727e4640bdb -- Anna\u2019s Archive.pdf",
+    "title": "Biological Evaluation Of Medical Devices  Selection Of Tests -- The British Standards Institution -- 2017 -- Bsi British Standards Institution -- 9780580844577 -- Fa699398D689736Dfc992727E4640Bdb -- Anna\u2019S Archive",
+    "description": "Uploaded from regulatory_documents",
+    "categories": [
+      "Regulations"
+    ],
+    "document_type": "REFERENCE",
+    "chat_id": null,
+    "upload_date": "2024-12-22T02:27:25.431345",
+    "file_path": "data/reference_documents/e8de4cac-db29-4770-bd91-e0dd743aeda4_Biological evaluation of medical devices_ Selection of tests -- The British Standards Institution -- 2017 -- BSI British Standards Institution -- 9780580844577 -- fa699398d689736dfc992727e4640bdb -- Anna\u2019s Archive.pdf"
+  },
+  "fada1082-94ef-4061-8fe3-017fc78ce17d": {
+    "id": "fada1082-94ef-4061-8fe3-017fc78ce17d",
+    "filename": "BS EN ISO 10993-1_2009 (2010) - libgen.li.pdf",
+    "title": "Bs En Iso 10993-1 2009 (2010) - Libgen.Li",
+    "description": "Uploaded from regulatory_documents",
+    "categories": [
+      "Regulations"
+    ],
+    "document_type": "REFERENCE",
+    "chat_id": null,
+    "upload_date": "2024-12-22T02:27:25.457947",
+    "file_path": "data/reference_documents/fada1082-94ef-4061-8fe3-017fc78ce17d_BS EN ISO 10993-1_2009 (2010) - libgen.li.pdf"
+  },
+  "15d5bcfa-f2ed-4b5f-98e8-6e65102ff150": {
+    "id": "15d5bcfa-f2ed-4b5f-98e8-6e65102ff150",
+    "filename": "DIN EN ISO 10993-5_2009-10 Biologische Beurteilung von Medizinprodukten - Teil 5_ PrA\u0303\u00bcfungen auf In-vitro-ZytotoxizitA\u0303\u00a4t (ISO 1099 - libgen.li.pdf",
+    "title": "Din En Iso 10993-5 2009-10 Biologische Beurteilung Von Medizinprodukten - Teil 5  Pra\u0303\u00bcFungen Auf In-Vitro-Zytotoxizita\u0303\u00a4T (Iso 1099 - Libgen.Li",
+    "description": "Uploaded from regulatory_documents",
+    "categories": [
+      "Regulations"
+    ],
+    "document_type": "REFERENCE",
+    "chat_id": null,
+    "upload_date": "2024-12-22T02:27:25.483989",
+    "file_path": "data/reference_documents/15d5bcfa-f2ed-4b5f-98e8-6e65102ff150_DIN EN ISO 10993-5_2009-10 Biologische Beurteilung von Medizinprodukten - Teil 5_ PrA\u0303\u00bcfungen auf In-vitro-ZytotoxizitA\u0303\u00a4t (ISO 1099 - libgen.li.pdf"
+  },
+  "13f2f934-fa86-45aa-acd8-54980d2e0daf": {
+    "id": "13f2f934-fa86-45aa-acd8-54980d2e0daf",
+    "filename": "ISO 10993-11.pdf",
+    "title": "Iso 10993-11",
+    "description": "Uploaded from regulatory_documents",
+    "categories": [
+      "Regulations"
+    ],
+    "document_type": "REFERENCE",
+    "chat_id": null,
+    "upload_date": "2024-12-22T02:27:25.501603",
+    "file_path": "data/reference_documents/13f2f934-fa86-45aa-acd8-54980d2e0daf_ISO 10993-11.pdf"
+  },
+  "62571ce4-3d90-4a05-b2f2-bab9f62ac77c": {
+    "id": "62571ce4-3d90-4a05-b2f2-bab9f62ac77c",
+    "filename": "ISO 10993-10.pdf",
+    "title": "Iso 10993-10",
+    "description": "Uploaded from regulatory_documents",
+    "categories": [
+      "Regulations"
+    ],
+    "document_type": "REFERENCE",
+    "chat_id": null,
+    "upload_date": "2024-12-22T02:27:25.510156",
+    "file_path": "data/reference_documents/62571ce4-3d90-4a05-b2f2-bab9f62ac77c_ISO 10993-10.pdf"
+  },
+  "030cc88b-e680-4cd0-9862-a2ba94cb5cfa": {
+    "id": "030cc88b-e680-4cd0-9862-a2ba94cb5cfa",
+    "filename": "BS EN ISO 13958_2015 - libgen.li.pdf",
+    "title": "Bs En Iso 13958 2015 - Libgen.Li",
+    "description": "Uploaded from regulatory_documents",
+    "categories": [
+      "Regulations"
+    ],
+    "document_type": "REFERENCE",
+    "chat_id": null,
+    "upload_date": "2024-12-22T02:27:25.523128",
+    "file_path": "data/reference_documents/030cc88b-e680-4cd0-9862-a2ba94cb5cfa_BS EN ISO 13958_2015 - libgen.li.pdf"
+  }
+}

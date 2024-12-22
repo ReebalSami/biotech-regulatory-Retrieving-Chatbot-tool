@@ -1,0 +1,64 @@
+EU Medical Device Regulation (MDR) 2017/745
+
+Key Points for Medical Device Manufacturers:
+
+1. Classification Rules (Annex VIII)
+- Class I: Low-risk devices
+- Class IIa: Medium-risk devices
+- Class IIb: Medium to high-risk devices
+- Class III: High-risk devices
+
+2. Safety and Performance Requirements (Annex I)
+- General safety and performance requirements
+- Chemical, physical, and biological properties
+- Infection and microbial contamination
+- Construction and environmental properties
+- Devices with diagnostic or measuring function
+- Protection against radiation
+- Electronic programmable systems
+- Information supplied with the device
+
+3. Technical Documentation (Annex II)
+- Device description and specification
+- Manufacturing information
+- Safety and performance requirements
+- Benefit-risk analysis
+- Product verification and validation
+
+4. Quality Management System (Article 10)
+- Compliance with ISO 13485
+- Risk management system
+- Clinical evaluation system
+- Post-market surveillance system
+
+5. Clinical Evidence Requirements
+- Clinical evaluation plan
+- Clinical investigations when necessary
+- Post-market clinical follow-up
+
+6. Post-Market Surveillance
+- Post-market surveillance plan
+- Periodic safety update reports
+- Trend reporting
+- Incident reporting
+
+7. Unique Device Identification (UDI)
+- UDI carrier on device or packaging
+- Registration in EUDAMED database
+- Traceability requirements
+
+8. Person Responsible for Regulatory Compliance
+- Qualification requirements
+- Responsibilities and duties
+- Availability within organization
+
+9. Conformity Assessment
+- Notified Body involvement
+- Technical documentation assessment
+- Quality management system audit
+- Surveillance assessments
+
+10. Declaration of Conformity
+- CE marking requirements
+- Documentation requirements
+- Registration requirements

@@ -1,114 +1,167 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
+  Box,
   Paper,
   Typography,
   TextField,
-  Button,
-  Box,
+  IconButton,
   List,
   ListItem,
   ListItemText,
-  Chip,
   Divider,
-  CircularProgress,
   Alert,
   Snackbar,
+  Chip,
+  CircularProgress
 } from '@mui/material';
-import SendIcon from '@mui/icons-material/Send';
-import SaveIcon from '@mui/icons-material/Save';
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
+import {
+  Send as SendIcon,
+  AttachFile as AttachFileIcon,
+  Close as CloseIcon
+} from '@mui/icons-material';
 
-const Chatbot = ({ questionnaireData, messages, setMessages, documents }) => {
-  const [newMessage, setNewMessage] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+const Chatbot = ({ questionnaireData }) => {
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [chatId] = useState(() => crypto.randomUUID());
+  const [attachments, setAttachments] = useState([]);
+  const fileInputRef = useRef(null);
   const messagesEndRef = useRef(null);
 
-  // Fetch documents
+  // Initialize chat with welcome message
   useEffect(() => {
-    const fetchDocuments = async () => {
-      try {
-        const response = await fetch('http://localhost:8000/user-documents');
-        if (response.ok) {
-          const data = await response.json();
-          // setDocuments(data);
-        }
-      } catch (error) {
-        console.error('Error fetching documents:', error);
-      }
-    };
-
-    fetchDocuments();
-    // Poll for document updates every 5 seconds
-    const interval = setInterval(fetchDocuments, 5000);
-    return () => clearInterval(interval);
-  }, []);
-
-  // Effect for questionnaire data and document updates
-  useEffect(() => {
-    if (!messages.length && (!questionnaireData || Object.keys(questionnaireData).length === 0)) {
-      // Show welcome message only on first load when no questionnaire data
-      setMessages([
-        {
-          type: 'system',
-          content: 'Welcome! I can help you understand regulatory requirements for your biotech product. You can:\n\n' +
-                  '1. Fill out the questionnaire to get personalized guidance\n' +
-                  '2. Upload relevant documents for more specific answers (optional)\n' +
-                  '3. Ask questions about regulations and compliance\n\n' +
-                  'How can I assist you today?',
-          timestamp: new Date().toISOString()
-        }
-      ]);
-      return;
+    if (messages.length === 0) {
+      setMessages([{
+        role: 'system',
+        content: 'Welcome! I can help you understand regulatory requirements for your biotech product. You can:\n\n' +
+                '1. Fill out the questionnaire to get personalized guidance\n' +
+                '2. Upload relevant documents for more specific answers (optional)\n' +
+                '3. Ask questions about regulations and compliance\n\n' +
+                'How can I assist you today?',
+        timestamp: new Date()
+      }]);
     }
+  }, [messages.length]);
 
+  // Add questionnaire data to chat when available
+  useEffect(() => {
     if (questionnaireData && Object.keys(questionnaireData).length > 0) {
-      const currentQuestionnaireStr = JSON.stringify(questionnaireData);
-      const prevQuestionnaire = messages.find(message => message.type === 'system' && message.content.includes('Thank you for providing your information.'));
+      const hasSummary = messages.some(msg => 
+        msg.role === 'system' && 
+        msg.content.includes('Thank you for providing your information')
+      );
 
-      if (!prevQuestionnaire) {
-        // Clear previous messages when questionnaire is updated
-        setMessages([{
-          type: 'system',
+      if (!hasSummary) {
+        setMessages(prev => [...prev, {
+          role: 'system',
           content: `Thank you for providing your information. I understand that:\n\n` +
                   `• Your product purpose: ${questionnaireData.intended_purpose}\n` +
                   `• Life-threatening use: ${questionnaireData.life_threatening ? 'Yes' : 'No'}\n` +
                   `• Intended users: ${questionnaireData.user_type}\n` +
                   `• Requires sterilization: ${questionnaireData.requires_sterilization ? 'Yes' : 'No'}\n` +
                   `• Body contact duration: ${questionnaireData.body_contact_duration}\n\n` +
-                  `${documents.length > 0 
-                    ? `I will also consider your ${documents.length} uploaded document(s) when providing answers.` 
-                    : 'You can upload relevant documents to get more specific answers (optional).'}\n\n` +
                   `What would you like to know about the regulatory requirements for your product?`,
-          timestamp: new Date().toISOString(),
+          timestamp: new Date()
         }]);
       }
     }
-  }, [questionnaireData, documents, messages]);
-
-  // Auto-scroll effect
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+  }, [questionnaireData, messages]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  const handleAttachFile = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    // Check file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      setError('File size must be less than 10MB');
+      return;
+    }
+
+    // Check file type
+    const allowedTypes = ['.pdf', '.doc', '.docx', '.txt'];
+    const fileExtension = file.name.toLowerCase().slice(file.name.lastIndexOf('.'));
+    if (!allowedTypes.includes(fileExtension)) {
+      setError('Only PDF, Word, and text files are allowed');
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('chat_id', chatId);
+
+      const response = await fetch('http://localhost:8000/chat/attachments/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to upload file');
+      }
+
+      const data = await response.json();
+      setAttachments(prev => [...prev, {
+        id: data.document_id,
+        filename: data.filename,
+        uploadDate: new Date(data.upload_date)
+      }]);
+
+      // Add system message about attachment
+      setMessages(prev => [...prev, {
+        role: 'system',
+        content: `File "${file.name}" attached successfully. I'll consider this document in our conversation.`,
+        timestamp: new Date()
+      }]);
+    } catch (error) {
+      setError('Failed to upload file: ' + error.message);
+    }
+  };
+
+  const handleRemoveAttachment = async (attachmentId) => {
+    try {
+      const response = await fetch(`http://localhost:8000/chat/attachments/${attachmentId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to remove attachment');
+      }
+
+      setAttachments(prev => prev.filter(att => att.id !== attachmentId));
+      
+      // Add system message about removal
+      setMessages(prev => [...prev, {
+        role: 'system',
+        content: 'Attachment removed from the conversation.',
+        timestamp: new Date()
+      }]);
+    } catch (error) {
+      setError('Failed to remove attachment: ' + error.message);
+    }
+  };
+
   const handleSend = async () => {
-    if (!newMessage.trim()) return;
+    if (!input.trim()) return;
 
     const userMessage = {
-      type: 'user',
-      content: newMessage,
-      timestamp: new Date().toISOString(),
+      role: 'user',
+      content: input,
+      timestamp: new Date()
     };
 
     setMessages(prev => [...prev, userMessage]);
-    setNewMessage('');
-    setIsLoading(true);
-    setError(null);
+    setInput('');
+    setLoading(true);
 
     try {
       const response = await fetch('http://localhost:8000/chat', {
@@ -117,9 +170,9 @@ const Chatbot = ({ questionnaireData, messages, setMessages, documents }) => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          message: newMessage,
-          questionnaire_data: questionnaireData,
-          has_uploaded_documents: documents.length > 0
+          query: input,
+          chat_id: chatId,
+          context_size: 3
         }),
       });
 
@@ -129,324 +182,183 @@ const Chatbot = ({ questionnaireData, messages, setMessages, documents }) => {
 
       const data = await response.json();
       
-      // Format sources if they exist
-      const formattedSources = data.sources?.map(source => {
-        if (typeof source === 'string') {
-          return { content: source };
-        }
-        return source;
-      }) || [];
-
-      const botMessage = {
-        type: 'bot',
+      setMessages(prev => [...prev, {
+        role: 'assistant',
         content: data.response,
-        timestamp: new Date().toISOString(),
-        sources: formattedSources,
-      };
-
-      setMessages(prev => [...prev, botMessage]);
+        sources: data.sources,
+        timestamp: new Date()
+      }]);
     } catch (error) {
-      console.error('Chat error:', error);
-      setError('Failed to get response from the chatbot');
+      setError('Failed to get response: ' + error.message);
+      setMessages(prev => [...prev, {
+        role: 'system',
+        content: 'Sorry, I encountered an error while processing your request. Please try again.',
+        timestamp: new Date()
+      }]);
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  const handleSaveChat = async () => {
-    try {
-      setIsLoading(true);
-      
-      // Create a temporary div for PDF content
-      const pdfContent = document.createElement('div');
-      pdfContent.style.padding = '20px';
-      pdfContent.style.fontFamily = 'Arial';
-      
-      // Add title and date
-      const header = document.createElement('div');
-      header.innerHTML = `
-        <h1 style="color: #1976d2; margin-bottom: 10px;">Regulatory Compliance Chat Report</h1>
-        <p style="color: #666; margin-bottom: 20px;">Generated on ${new Date().toLocaleString()}</p>
-      `;
-      pdfContent.appendChild(header);
-
-      // Add questionnaire data if available
-      if (questionnaireData && Object.keys(questionnaireData).length > 0) {
-        const questionnaireSection = document.createElement('div');
-        questionnaireSection.innerHTML = `
-          <h2 style="color: #1976d2; margin-top: 20px;">Product Information</h2>
-          <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
-            <p><strong>Product Purpose:</strong> ${questionnaireData.intended_purpose || 'Not specified'}</p>
-            <p><strong>Life-threatening Use:</strong> ${questionnaireData.life_threatening ? 'Yes' : 'No'}</p>
-            <p><strong>User Type:</strong> ${questionnaireData.user_type || 'Not specified'}</p>
-            <p><strong>Requires Sterilization:</strong> ${questionnaireData.requires_sterilization ? 'Yes' : 'No'}</p>
-            <p><strong>Body Contact Duration:</strong> ${questionnaireData.body_contact_duration || 'Not specified'}</p>
-          </div>
-        `;
-        pdfContent.appendChild(questionnaireSection);
-      }
-
-      // Add chat messages
-      const chatSection = document.createElement('div');
-      chatSection.innerHTML = '<h2 style="color: #1976d2; margin-top: 20px;">Conversation History</h2>';
-      
-      messages.forEach((message, index) => {
-        const messageDiv = document.createElement('div');
-        messageDiv.style.marginBottom = '15px';
-        
-        // Message header with type and timestamp
-        const messageType = message.type.charAt(0).toUpperCase() + message.type.slice(1);
-        messageDiv.innerHTML = `
-          <div style="margin-bottom: 5px; color: #666;">
-            <strong>${messageType}</strong> - ${new Date(message.timestamp).toLocaleString()}
-          </div>
-        `;
-
-        // Message content
-        const contentDiv = document.createElement('div');
-        contentDiv.style.padding = '10px';
-        contentDiv.style.borderRadius = '5px';
-        contentDiv.style.backgroundColor = 
-          message.type === 'user' ? '#e3f2fd' :
-          message.type === 'system' ? '#fff3e0' :
-          message.type === 'error' ? '#ffebee' : '#ffffff';
-        contentDiv.innerHTML = `<p style="margin: 0;">${message.content}</p>`;
-        messageDiv.appendChild(contentDiv);
-
-        // Add sources if available
-        if (message.sources && message.sources.length > 0) {
-          const sourcesDiv = document.createElement('div');
-          sourcesDiv.style.marginTop = '10px';
-          sourcesDiv.style.paddingLeft = '15px';
-          sourcesDiv.innerHTML = '<p style="color: #666; margin-bottom: 5px;"><strong>Sources:</strong></p>';
-          
-          message.sources.forEach(source => {
-            sourcesDiv.innerHTML += `
-              <div style="background-color: #ffffff; padding: 10px; border: 1px solid #e0e0e0; border-radius: 5px; margin-bottom: 5px;">
-                <p style="margin: 0; font-weight: bold;">${source.title || 'Untitled Document'}</p>
-                <p style="margin: 5px 0; font-style: italic;">${source.content}</p>
-                ${source.jurisdiction ? `<span style="background-color: #e3f2fd; padding: 3px 8px; border-radius: 12px; font-size: 0.8em;">${source.jurisdiction}</span>` : ''}
-              </div>
-            `;
-          });
-          messageDiv.appendChild(sourcesDiv);
-        }
-
-        chatSection.appendChild(messageDiv);
-      });
-      
-      pdfContent.appendChild(chatSection);
-      document.body.appendChild(pdfContent);
-
-      // Convert to PDF
-      const pdf = new jsPDF('p', 'pt', 'a4');
-      const scale = 2; // Increase quality
-      
-      // Function to add pages
-      const addPage = async (element, pdf) => {
-        const canvas = await html2canvas(element, {
-          scale: scale,
-          useCORS: true,
-          logging: false
-        });
-        
-        const imgData = canvas.toDataURL('image/jpeg', 1.0);
-        const pdfWidth = pdf.internal.pageSize.getWidth();
-        const pdfHeight = pdf.internal.pageSize.getHeight();
-        const imgWidth = canvas.width / scale;
-        const imgHeight = canvas.height / scale;
-        
-        let heightLeft = imgHeight;
-        let position = 0;
-        let page = 1;
-
-        pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, (imgHeight * pdfWidth) / imgWidth);
-        heightLeft -= pdfHeight;
-
-        while (heightLeft >= 0) {
-          position = -pdfHeight * page;
-          pdf.addPage();
-          pdf.addImage(imgData, 'JPEG', 0, position, pdfWidth, (imgHeight * pdfWidth) / imgWidth);
-          heightLeft -= pdfHeight;
-          page++;
-        }
-      };
-
-      await addPage(pdfContent, pdf);
-      
-      // Save the PDF
-      pdf.save(`regulatory-chat-report-${new Date().toISOString().split('T')[0]}.pdf`);
-      
-      // Clean up
-      document.body.removeChild(pdfContent);
-      setIsLoading(false);
-    } catch (error) {
-      console.error('Error generating PDF:', error);
-      setError('Failed to generate PDF report');
-      setIsLoading(false);
+  const handleKeyPress = (event) => {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      handleSend();
     }
-  };
-
-  const formatTimestamp = (timestamp) => {
-    return new Date(timestamp).toLocaleString();
   };
 
   return (
-    <Paper elevation={3} sx={{ p: 3, height: '80vh', display: 'flex', flexDirection: 'column' }}>
-      <Box sx={{ 
-        flex: 1, 
-        overflowY: 'auto', 
-        mb: 2,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 2
-      }}>
-        {messages.map((message, index) => (
-          <Box
-            key={index}
-            sx={{
-              display: 'flex',
-              justifyContent: message.type === 'user' ? 'flex-end' : 'flex-start',
-              mb: 1
-            }}
-          >
-            <Paper
-              elevation={1}
-              sx={{
-                p: 2,
-                maxWidth: '80%',
-                backgroundColor: message.type === 'user' 
-                  ? 'primary.main'
-                  : message.type === 'system' || message.type === 'bot'
-                    ? 'grey.100'
-                    : 'secondary.light',
-                color: message.type === 'user' ? 'white' : 'text.primary',
-                borderRadius: 2,
-                ...(message.type === 'user' 
-                  ? { 
-                      borderTopRightRadius: 0,
-                      ml: 'auto'
+    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+      <Paper elevation={3} sx={{ flex: 1, p: 2, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        {/* Messages Area */}
+        <Box sx={{ flex: 1, overflow: 'auto', mb: 2 }}>
+          <List>
+            {messages.map((message, index) => (
+              <React.Fragment key={index}>
+                <ListItem alignItems="flex-start" sx={{
+                  flexDirection: 'column',
+                  backgroundColor: message.role === 'user' ? 'primary.light' : 'background.paper',
+                  borderRadius: 1,
+                  mb: 1
+                }}>
+                  <ListItemText
+                    primary={
+                      <Typography variant="subtitle2" sx={{ color: message.role === 'user' ? 'common.white' : 'text.primary' }}>
+                        {message.role === 'user' ? 'You' : message.role === 'system' ? 'System' : 'Assistant'}
+                        {message.timestamp && (
+                          <Typography component="span" variant="caption" sx={{ ml: 1, opacity: 0.7 }}>
+                            {message.timestamp.toLocaleTimeString()}
+                          </Typography>
+                        )}
+                      </Typography>
                     }
-                  : {
-                      borderTopLeftRadius: 0,
-                      mr: 'auto'
-                    })
-              }}
-            >
-              <Typography
-                component="div"
-                sx={{
-                  whiteSpace: 'pre-wrap',
-                  '& ul, & ol': {
-                    pl: 2,
-                    mb: 0
-                  }
-                }}
-              >
-                {message.content}
-              </Typography>
-              {message.sources && (
-                <Box sx={{ mt: 1, pt: 1, borderTop: 1, borderColor: 'divider' }}>
-                  <Typography variant="caption" color="text.secondary">
-                    Sources:
-                  </Typography>
-                  <Box sx={{ mt: 0.5 }}>
-                    {message.sources.map((source, idx) => (
-                      <Box 
-                        key={idx} 
+                    secondary={
+                      <Typography
+                        component="div"
+                        variant="body2"
                         sx={{ 
-                          mb: 1,
-                          p: 1,
-                          backgroundColor: 'rgba(0, 0, 0, 0.03)',
-                          borderRadius: 1,
-                          '&:last-child': { mb: 0 }
+                          mt: 1,
+                          color: message.role === 'user' ? 'common.white' : 'text.primary',
+                          whiteSpace: 'pre-wrap'
                         }}
                       >
-                        {source.title && (
-                          <Typography variant="caption" sx={{ fontWeight: 'bold', display: 'block' }}>
-                            {source.title}
-                          </Typography>
-                        )}
-                        {source.content && (
-                          <Typography variant="caption" sx={{ display: 'block', mt: 0.5 }}>
-                            {source.content}
-                          </Typography>
-                        )}
-                        {source.jurisdiction && (
+                        {message.content}
+                      </Typography>
+                    }
+                  />
+                  {message.sources && message.sources.length > 0 && (
+                    <Box sx={{ mt: 1, width: '100%' }}>
+                      <Typography variant="caption" color="text.secondary">
+                        Sources:
+                      </Typography>
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
+                        {message.sources.map((source, idx) => (
                           <Chip
-                            label={source.jurisdiction}
+                            key={idx}
+                            label={source.title}
                             size="small"
-                            sx={{ mt: 0.5 }}
                             variant="outlined"
+                            sx={{ 
+                              backgroundColor: 'background.paper',
+                              '& .MuiChip-label': {
+                                color: 'text.primary'
+                              }
+                            }}
                           />
-                        )}
+                        ))}
                       </Box>
-                    ))}
-                  </Box>
-                </Box>
-              )}
-              <Typography 
-                variant="caption" 
-                sx={{ 
-                  display: 'block',
-                  mt: 0.5,
-                  color: message.type === 'user' ? 'rgba(255,255,255,0.7)' : 'text.secondary'
-                }}
-              >
-                {new Date(message.timestamp).toLocaleTimeString()}
-              </Typography>
-            </Paper>
-          </Box>
-        ))}
-        {isLoading && (
-          <Box sx={{ display: 'flex', justifyContent: 'center', my: 2 }}>
-            <CircularProgress size={24} />
+                    </Box>
+                  )}
+                </ListItem>
+                {index < messages.length - 1 && <Divider />}
+              </React.Fragment>
+            ))}
+          </List>
+          <div ref={messagesEndRef} />
+        </Box>
+
+        {/* Attachments Area */}
+        {attachments.length > 0 && (
+          <Box sx={{ mb: 2 }}>
+            <Typography variant="caption" color="text.secondary">
+              Attached Documents:
+            </Typography>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 0.5 }}>
+              {attachments.map((attachment) => (
+                <Chip
+                  key={attachment.id}
+                  label={attachment.filename}
+                  onDelete={() => handleRemoveAttachment(attachment.id)}
+                  size="small"
+                  variant="outlined"
+                />
+              ))}
+            </Box>
           </Box>
         )}
-        <div ref={messagesEndRef} />
-      </Box>
 
-      <Box sx={{ 
-        display: 'flex', 
-        gap: 1,
-        mt: 'auto',
-        borderTop: 1,
-        borderColor: 'divider',
-        pt: 2
-      }}>
-        <TextField
-          fullWidth
-          variant="outlined"
-          placeholder="Type your message..."
-          value={newMessage}
-          onChange={(e) => setNewMessage(e.target.value)}
-          onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
-          multiline
-          maxRows={4}
-          size="small"
-        />
-        <Button
-          variant="contained"
-          color="primary"
-          onClick={handleSend}
-          disabled={isLoading || !newMessage.trim()}
-          sx={{ minWidth: 100 }}
-        >
-          Send
-        </Button>
-      </Box>
+        {/* Input Area */}
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <input
+            type="file"
+            ref={fileInputRef}
+            style={{ display: 'none' }}
+            onChange={handleAttachFile}
+            accept=".pdf,.doc,.docx,.txt"
+          />
+          <IconButton
+            onClick={() => fileInputRef.current?.click()}
+            disabled={loading}
+            size="small"
+          >
+            <AttachFileIcon />
+          </IconButton>
+          <TextField
+            fullWidth
+            multiline
+            maxRows={4}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyPress={handleKeyPress}
+            placeholder="Type your message..."
+            disabled={loading}
+            size="small"
+          />
+          <IconButton
+            onClick={handleSend}
+            disabled={loading || !input.trim()}
+            color="primary"
+            size="small"
+          >
+            {loading ? <CircularProgress size={24} /> : <SendIcon />}
+          </IconButton>
+        </Box>
+      </Paper>
 
+      {/* Error Snackbar */}
       <Snackbar
         open={!!error}
         autoHideDuration={6000}
         onClose={() => setError(null)}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
-        <Alert severity="error" onClose={() => setError(null)}>
+        <Alert
+          severity="error"
+          action={
+            <IconButton
+              size="small"
+              aria-label="close"
+              color="inherit"
+              onClick={() => setError(null)}
+            >
+              <CloseIcon fontSize="small" />
+            </IconButton>
+          }
+        >
           {error}
         </Alert>
       </Snackbar>
-    </Paper>
+    </Box>
   );
 };
 
