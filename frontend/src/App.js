@@ -180,9 +180,26 @@ function App() {
     setValue(newValue);
   };
 
-  const handleQuestionnaireSubmit = (guidelines) => {
-    setGuidelines(guidelines);
-    setValue(1); // Switch to RegulatoryDisplay tab
+  const handleQuestionnaireSubmit = async (formData) => {
+    try {
+      const response = await fetch('http://localhost:8000/questionnaire', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch guidelines');
+      }
+
+      const data = await response.json();
+      setGuidelines(data.guidelines);
+      setValue(1); // Switch to RegulatoryDisplay tab
+    } catch (error) {
+      console.error('Error fetching guidelines:', error);
+    }
   };
 
   return (

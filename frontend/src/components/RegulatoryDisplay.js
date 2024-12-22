@@ -4,33 +4,44 @@ import {
   Typography,
   List,
   ListItem,
-  Divider,
   Box,
   Chip,
   alpha,
   Stack,
+  useTheme,
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
 
-// Custom styled components
 const StyledPaper = styled(Paper)(({ theme }) => ({
-  padding: theme.spacing(4),
+  padding: theme.spacing(3),
   borderRadius: theme.shape.borderRadius * 2,
-  backgroundColor: alpha(theme.palette.background.paper, 0.8),
-  backdropFilter: 'blur(20px)',
-  border: '1px solid',
-  borderColor: alpha(theme.palette.divider, 0.1),
+  backgroundColor: theme.palette.background.paper,
+  height: '100%',
+  overflow: 'auto',
+  '&::-webkit-scrollbar': {
+    width: '8px',
+  },
+  '&::-webkit-scrollbar-track': {
+    background: 'transparent',
+  },
+  '&::-webkit-scrollbar-thumb': {
+    background: theme.palette.divider,
+    borderRadius: '4px',
+  },
 }));
 
 const StyledListItem = styled(ListItem)(({ theme }) => ({
-  backgroundColor: alpha(theme.palette.background.paper, 0.5),
+  backgroundColor: alpha(theme.palette.background.default, 0.6),
   borderRadius: theme.shape.borderRadius,
   marginBottom: theme.spacing(2),
   padding: theme.spacing(3),
   transition: theme.transitions.create(['background-color', 'box-shadow']),
   '&:hover': {
-    backgroundColor: theme.palette.background.paper,
+    backgroundColor: theme.palette.background.default,
     boxShadow: `0 4px 20px ${alpha(theme.palette.common.black, 0.05)}`,
+  },
+  '&:last-child': {
+    marginBottom: 0,
   },
 }));
 
@@ -45,6 +56,8 @@ const StyledChip = styled(Chip)(({ theme }) => ({
 }));
 
 const RegulatoryDisplay = ({ guidelines, questionnaireData }) => {
+  const theme = useTheme();
+
   if (!guidelines || guidelines.length === 0) {
     return (
       <StyledPaper elevation={0}>
@@ -53,7 +66,8 @@ const RegulatoryDisplay = ({ guidelines, questionnaireData }) => {
           flexDirection: 'column', 
           alignItems: 'center',
           justifyContent: 'center',
-          minHeight: 400,
+          height: '100%',
+          opacity: 0.7,
           textAlign: 'center',
           gap: 2
         }}>
@@ -77,7 +91,7 @@ const RegulatoryDisplay = ({ guidelines, questionnaireData }) => {
               Product Profile
             </Typography>
             <Box sx={{ 
-              backgroundColor: alpha('#FFFFFF', 0.5),
+              backgroundColor: alpha(theme.palette.background.paper, 0.5),
               borderRadius: 2,
               p: 2,
               display: 'flex',
@@ -114,10 +128,12 @@ const RegulatoryDisplay = ({ guidelines, questionnaireData }) => {
                     <Typography variant="h6" component="div" sx={{ fontWeight: 600 }}>
                       {guideline.title}
                     </Typography>
-                    <StyledChip
-                      label={`${(guideline.relevance_score * 100).toFixed(0)}% Match`}
-                      size="small"
-                    />
+                    {guideline.relevance_score && (
+                      <StyledChip
+                        label={`${(guideline.relevance_score * 100).toFixed(0)}% Match`}
+                        size="small"
+                      />
+                    )}
                   </Box>
                   <Typography 
                     variant="body1" 
@@ -129,16 +145,18 @@ const RegulatoryDisplay = ({ guidelines, questionnaireData }) => {
                   >
                     {guideline.content}
                   </Typography>
-                  <Typography 
-                    variant="caption" 
-                    color="text.secondary"
-                    sx={{ 
-                      display: 'block',
-                      fontStyle: 'italic'
-                    }}
-                  >
-                    Source: {guideline.reference}
-                  </Typography>
+                  {guideline.reference && (
+                    <Typography 
+                      variant="caption" 
+                      color="text.secondary"
+                      sx={{ 
+                        display: 'block',
+                        fontStyle: 'italic'
+                      }}
+                    >
+                      Source: {guideline.reference}
+                    </Typography>
+                  )}
                 </Box>
               </StyledListItem>
             ))}

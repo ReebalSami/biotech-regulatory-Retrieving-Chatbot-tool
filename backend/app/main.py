@@ -5,9 +5,16 @@ from datetime import datetime
 from pydantic import BaseModel
 import json
 from pathlib import Path
+from dotenv import load_dotenv
+import os
+
+# Load environment variables
+load_dotenv()
+
 from app.document_storage import DocumentStorage
 from app.utils.document_types import DocumentType, DocumentMetadata
 from app.utils.exceptions import DocumentNotFoundError
+from app.routers import chat
 
 app = FastAPI(
     title="Biotech Regulatory Document Management API",
@@ -19,6 +26,7 @@ app = FastAPI(
     - Document versioning
     - Metadata management
     - Regulatory compliance tracking
+    - AI-powered chat assistance
     """,
     version="1.0.0",
     docs_url="/api/docs",
@@ -28,7 +36,7 @@ app = FastAPI(
 # CORS middleware configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://localhost:3000"],  # React development server
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -485,6 +493,8 @@ async def update_document(doc_id: str, updates: dict, document_storage: Document
         raise e
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+app.include_router(chat.router, prefix="/api")  # Add prefix to avoid conflicts
 
 if __name__ == "__main__":
     import uvicorn

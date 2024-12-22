@@ -14,29 +14,41 @@ import SendRoundedIcon from '@mui/icons-material/SendRounded';
 import { styled } from '@mui/material/styles';
 
 // Styled components
-const MessageContainer = styled(Box)(({ theme, isUser }) => ({
+const shouldForwardProp = prop => prop !== 'isUser';
+
+const MessageContainer = styled('div', { shouldForwardProp })(({ theme, isUser }) => ({
   display: 'flex',
-  justifyContent: isUser ? 'flex-end' : 'flex-start',
+  alignItems: 'flex-start',
   marginBottom: theme.spacing(2),
+  justifyContent: isUser ? 'flex-end' : 'flex-start',
+  width: '100%',
 }));
 
-const MessageBubble = styled(Paper)(({ theme, isUser }) => ({
+const MessageBubble = styled(Paper, { shouldForwardProp })(({ theme, isUser }) => ({
   padding: theme.spacing(1.5, 2),
+  borderRadius: theme.shape.borderRadius * 2,
   maxWidth: '70%',
-  borderRadius: isUser ? '20px 20px 4px 20px' : '20px 20px 20px 4px',
-  backgroundColor: isUser ? theme.palette.primary.main : theme.palette.background.paper,
+  minWidth: '200px',
+  backgroundColor: isUser ? theme.palette.primary.main : theme.palette.grey[50],
   color: isUser ? theme.palette.primary.contrastText : theme.palette.text.primary,
-  boxShadow: theme.shadows[1],
-  position: 'relative',
-  '&::before': {
-    content: '""',
-    position: 'absolute',
-    bottom: 0,
-    [isUser ? 'right' : 'left']: -8,
-    borderStyle: 'solid',
-    borderWidth: '8px 8px 0 0',
-    borderColor: `${isUser ? theme.palette.primary.main : theme.palette.background.paper} transparent transparent transparent`,
-  },
+  boxShadow: 'none',
+}));
+
+const MessageGroup = styled('div', { shouldForwardProp })(({ theme, isUser }) => ({
+  display: 'flex',
+  alignItems: 'flex-end',
+  gap: theme.spacing(1),
+  flexDirection: 'row',
+  width: '100%',
+  justifyContent: isUser ? 'flex-end' : 'flex-start',
+}));
+
+const MessageContent = styled('div', { shouldForwardProp })(({ theme, isUser }) => ({
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: isUser ? 'flex-end' : 'flex-start',
+  flex: '0 1 auto',
+  maxWidth: '70%',
 }));
 
 const StyledTextField = styled(TextField)(({ theme }) => ({
@@ -71,19 +83,17 @@ const SendButton = styled(IconButton)(({ theme }) => ({
 }));
 
 const AssistantAvatar = styled(Avatar)(({ theme }) => ({
-  backgroundColor: theme.palette.secondary.light,
+  backgroundColor: theme.palette.secondary.main,
   width: 32,
   height: 32,
-  marginRight: theme.spacing(1),
-  boxShadow: theme.shadows[1],
+  fontSize: '0.875rem',
 }));
 
 const UserAvatar = styled(Avatar)(({ theme }) => ({
   backgroundColor: theme.palette.primary.main,
   width: 32,
   height: 32,
-  marginLeft: theme.spacing(1),
-  boxShadow: theme.shadows[1],
+  fontSize: '0.875rem',
 }));
 
 const ChatContainer = styled(Box)(({ theme }) => ({
@@ -91,35 +101,23 @@ const ChatContainer = styled(Box)(({ theme }) => ({
   flexDirection: 'column',
   height: '100%',
   backgroundColor: theme.palette.background.default,
-  borderRadius: theme.shape.borderRadius * 2,
-  position: 'relative',
+  borderRadius: theme.shape.borderRadius,
+  overflow: 'hidden',
 }));
 
 const MessageList = styled(Box)(({ theme }) => ({
   flexGrow: 1,
-  overflow: 'auto',
-  padding: theme.spacing(3),
-  scrollBehavior: 'smooth',
-  '&::-webkit-scrollbar': {
-    width: 6,
-  },
-  '&::-webkit-scrollbar-track': {
-    background: 'transparent',
-  },
-  '&::-webkit-scrollbar-thumb': {
-    background: theme.palette.divider,
-    borderRadius: 3,
-  },
+  overflowY: 'auto',
+  padding: theme.spacing(2),
+  display: 'flex',
+  flexDirection: 'column',
+  gap: theme.spacing(2),
 }));
 
 const InputContainer = styled(Box)(({ theme }) => ({
   padding: theme.spacing(2),
   borderTop: `1px solid ${theme.palette.divider}`,
   backgroundColor: theme.palette.background.paper,
-  backdropFilter: 'blur(10px)',
-  position: 'sticky',
-  bottom: 0,
-  zIndex: 1,
 }));
 
 const TypingIndicator = styled(Box)(({ theme }) => ({
@@ -162,18 +160,39 @@ function Chatbot() {
     setIsTyping(true);
 
     try {
-      // Simulate API call with timeout
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const response = await fetch('http://localhost:8000/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          content: userMessage.text,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to get response from AI');
+      }
+
+      const data = await response.json();
       
       const assistantMessage = {
-        text: "I'm here to help you with regulatory compliance. What would you like to know?",
+        text: data.response,
         isUser: false,
         timestamp: new Date(),
+        sources: data.sources,
       };
 
       setMessages(prev => [...prev, assistantMessage]);
     } catch (error) {
       console.error('Error sending message:', error);
+      const errorMessage = {
+        text: "I apologize, but I'm having trouble connecting to the server. Please try again later.",
+        isUser: false,
+        timestamp: new Date(),
+        isError: true,
+      };
+      setMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsTyping(false);
     }
@@ -189,14 +208,107 @@ function Chatbot() {
   return (
     <ChatContainer>
       <MessageList>
+        {messages.length === 0 && (
+          <Box sx={{ 
+            display: 'flex', 
+            justifyContent: 'center', 
+            alignItems: 'center',
+            height: '100%',
+            opacity: 0.7
+          }}>
+            <Typography variant="body1" color="text.secondary">
+              Ask me anything about biotech regulations and compliance!
+            </Typography>
+          </Box>
+        )}
         {messages.map((message, index) => (
           <Fade in timeout={500} key={index}>
             <MessageContainer isUser={message.isUser}>
-              {!message.isUser && <AssistantAvatar>AI</AssistantAvatar>}
-              <MessageBubble isUser={message.isUser}>
-                <Typography variant="body1">{message.text}</Typography>
-              </MessageBubble>
-              {message.isUser && <UserAvatar>U</UserAvatar>}
+              <MessageGroup isUser={message.isUser}>
+                {message.isUser ? (
+                  <>
+                    <MessageContent isUser={message.isUser}>
+                      <MessageBubble 
+                        isUser={message.isUser}
+                        sx={message.isError ? {
+                          backgroundColor: theme.palette.error.light,
+                          color: theme.palette.error.contrastText,
+                        } : {}}
+                      >
+                        <Typography variant="body1">{message.text}</Typography>
+                      </MessageBubble>
+                      {message.sources && (
+                        <Box sx={{ mt: 1, mr: 2 }}>
+                          <Typography variant="caption" color="text.secondary">
+                            Sources:
+                          </Typography>
+                          {message.sources.map((source, idx) => (
+                            <Typography 
+                              key={idx} 
+                              variant="caption" 
+                              color="text.secondary" 
+                              sx={{ 
+                                display: 'block',
+                                ml: 1,
+                                fontSize: '0.75rem',
+                                textAlign: 'right',
+                                '&::before': {
+                                  content: '"•"',
+                                  marginRight: '4px',
+                                }
+                              }}
+                            >
+                              {source.content}
+                            </Typography>
+                          ))}
+                        </Box>
+                      )}
+                    </MessageContent>
+                    <UserAvatar>U</UserAvatar>
+                  </>
+                ) : (
+                  <>
+                    <AssistantAvatar>AI</AssistantAvatar>
+                    <MessageContent isUser={message.isUser}>
+                      <MessageBubble 
+                        isUser={message.isUser}
+                        sx={message.isError ? {
+                          backgroundColor: theme.palette.error.light,
+                          color: theme.palette.error.contrastText,
+                        } : {}}
+                      >
+                        <Typography variant="body1">{message.text}</Typography>
+                      </MessageBubble>
+                      {message.sources && (
+                        <Box sx={{ mt: 1, ml: 2 }}>
+                          <Typography variant="caption" color="text.secondary">
+                            Sources:
+                          </Typography>
+                          {message.sources.map((source, idx) => (
+                            <Typography 
+                              key={idx} 
+                              variant="caption" 
+                              color="text.secondary" 
+                              sx={{ 
+                                display: 'block',
+                                ml: 1,
+                                fontSize: '0.75rem',
+                                textAlign: 'left',
+                                '&::before': {
+                                  content: '"•"',
+                                  marginRight: '4px',
+                                }
+                              }}
+                            >
+                              {source.content}
+                            </Typography>
+                          ))}
+                        </Box>
+                      )}
+                    </MessageContent>
+                  </>
+                )}
+              </MessageGroup>
             </MessageContainer>
           </Fade>
         ))}
