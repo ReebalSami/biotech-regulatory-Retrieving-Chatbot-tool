@@ -145,8 +145,15 @@ class DocumentStorage:
     
     def get_document_retrieval(self):
         """Get document retrieval instance"""
-        from app.document_retrieval import DocumentRetrieval
-        return DocumentRetrieval()
+        try:
+            from app.document_retrieval import DocumentRetrieval
+            print("Creating DocumentRetrieval instance...")
+            retrieval = DocumentRetrieval()
+            print("DocumentRetrieval instance created successfully")
+            return retrieval
+        except Exception as e:
+            print(f"Error creating DocumentRetrieval instance: {str(e)}")
+            raise e
 
     async def search_documents(
         self,

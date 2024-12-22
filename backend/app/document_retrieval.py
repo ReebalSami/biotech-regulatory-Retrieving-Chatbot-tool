@@ -21,7 +21,7 @@ class DocumentRetrieval:
     """Class for handling document retrieval and search."""
     
     def __init__(self, 
-                 index_dir: str = "./data/faiss_index",
+                 index_dir: str = None,
                  model_name: str = "all-MiniLM-L6-v2"):
         """
         Initialize the document retrieval system.
@@ -30,8 +30,13 @@ class DocumentRetrieval:
             index_dir: Directory to store FAISS index
             model_name: Name of the sentence transformer model to use
         """
+        if index_dir is None:
+            # Use absolute path from project root
+            base_dir = Path(__file__).parent.parent
+            index_dir = str(base_dir / "data/faiss_index")
+            
         self.index_dir = Path(index_dir)
-        self.index_dir.mkdir(parents=True, exist_ok=True)
+        print(f"Using index directory: {self.index_dir}")
         
         # Initialize text extractor
         self.text_extractor = TextExtractor()

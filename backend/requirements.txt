@@ -20,7 +20,7 @@ passlib[bcrypt]>=1.7.4
 aiofiles>=23.2.1
 python-magic>=0.4.27
 sentence-transformers==2.2.2
-faiss-cpu==1.7.4
+faiss-cpu==1.9.0
 pdfplumber==0.10.3
 huggingface-hub==0.16.4
 

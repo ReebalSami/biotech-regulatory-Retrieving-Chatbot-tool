@@ -27,8 +27,9 @@ A comprehensive tool for biotech companies to streamline regulatory compliance f
 - Python 3.10+
 - Node.js 18+
 - OpenAI API key
+- MongoDB database
 
-## Installation
+## Quick Start
 
 1. Clone the repository:
 ```bash
@@ -36,7 +37,31 @@ git clone <repository-url>
 cd biotech_regulatory_tool
 ```
 
-2. Set up the backend:
+2. Install all dependencies using Make:
+```bash
+make install
+```
+
+3. Configure environment variables:
+Create a `.env` file in the backend directory with the following:
+```
+OPENAI_API_KEY=your_openai_api_key
+MONGODB_URI=your_mongodb_uri
+DATABASE_NAME=your_database_name
+```
+
+4. Start both servers with a single command:
+```bash
+make run
+```
+
+This will start both the backend server (on port 8000) and the frontend server (on port 3000).
+
+## Manual Installation
+
+If you prefer to install manually or if Make is not available:
+
+1. Set up the backend:
 ```bash
 cd backend
 python -m venv venv
@@ -44,17 +69,15 @@ source venv/bin/activate  # On Windows: .\venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-3. Configure environment variables:
-Create a `.env` file in the backend directory:
-```
-OPENAI_API_KEY=your_openai_api_key
-```
-
-4. Set up the frontend:
+2. Set up the frontend:
 ```bash
-cd ../frontend
+cd frontend
 npm install
 ```
+
+3. Start the servers manually:
+- Backend: `cd backend && source venv/bin/activate && python -m uvicorn app.main:app --reload`
+- Frontend: `cd frontend && npm start`
 
 ## Running the Application
 
@@ -122,6 +145,13 @@ biotech_regulatory_tool/
 3. Commit your changes
 4. Push to the branch
 5. Create a Pull Request
+
+## Cleaning Up
+
+To remove all generated files and virtual environments:
+```bash
+make clean
+```
 
 ## License
 [Your chosen license]
