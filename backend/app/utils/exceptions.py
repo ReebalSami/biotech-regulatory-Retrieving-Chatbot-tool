@@ -11,6 +11,7 @@ class DocumentError(HTTPException):
         super().__init__(status_code=status_code, detail=detail, headers=headers)
 
 class DocumentNotFoundError(DocumentError):
+    """Raised when a document is not found."""
     def __init__(self, document_id: str):
         super().__init__(
             status_code=404,
@@ -18,10 +19,19 @@ class DocumentNotFoundError(DocumentError):
         )
 
 class DocumentIndexingError(DocumentError):
+    """Raised when there is an error indexing a document."""
     def __init__(self, detail: str):
         super().__init__(
             status_code=500,
             detail=f"Error indexing document: {detail}"
+        )
+
+class DocumentSearchError(DocumentError):
+    """Raised when there is an error searching documents."""
+    def __init__(self, detail: str):
+        super().__init__(
+            status_code=500,
+            detail=f"Error searching documents: {detail}"
         )
 
 class InvalidFileTypeError(DocumentError):

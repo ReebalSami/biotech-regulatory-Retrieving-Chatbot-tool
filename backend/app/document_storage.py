@@ -143,6 +143,11 @@ class DocumentStorage:
         for doc_id in to_delete:
             await self.delete_document(doc_id)
     
+    def get_document_retrieval(self):
+        """Get document retrieval instance"""
+        from app.document_retrieval import DocumentRetrieval
+        return DocumentRetrieval()
+
     async def search_documents(
         self,
         query: str,

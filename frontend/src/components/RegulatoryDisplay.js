@@ -4,12 +4,10 @@ import {
   Typography,
   List,
   ListItem,
-  ListItemText,
   Divider,
   Box,
   Chip,
 } from '@mui/material';
-import ReactMarkdown from 'react-markdown';
 
 const RegulatoryDisplay = ({ guidelines }) => {
   if (!guidelines || guidelines.length === 0) {
@@ -32,34 +30,24 @@ const RegulatoryDisplay = ({ guidelines }) => {
         {guidelines.map((guideline, index) => (
           <React.Fragment key={index}>
             <ListItem alignItems="flex-start">
-              <ListItemText
-                primary={
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Typography variant="h6">
-                      {guideline.title}
-                    </Typography>
-                    <Chip
-                      label={`Relevance: ${(guideline.relevance_score * 100).toFixed(0)}%`}
-                      color="primary"
-                      size="small"
-                    />
-                  </Box>
-                }
-                secondary={
-                  <Box sx={{ mt: 1 }}>
-                    <ReactMarkdown>
-                      {guideline.content}
-                    </ReactMarkdown>
-                    <Typography
-                      variant="caption"
-                      color="text.secondary"
-                      sx={{ mt: 1, display: 'block' }}
-                    >
-                      Reference: {guideline.reference}
-                    </Typography>
-                  </Box>
-                }
-              />
+              <Box sx={{ width: '100%' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                  <Typography variant="h6" component="div">
+                    {guideline.title}
+                  </Typography>
+                  <Chip
+                    label={`Relevance: ${(guideline.relevance_score * 100).toFixed(0)}%`}
+                    color="primary"
+                    size="small"
+                  />
+                </Box>
+                <Typography component="div" variant="body2" color="text.secondary">
+                  {guideline.content}
+                </Typography>
+                <Typography component="div" variant="caption" color="text.secondary" sx={{ mt: 1 }}>
+                  Reference: {guideline.reference}
+                </Typography>
+              </Box>
             </ListItem>
             {index < guidelines.length - 1 && <Divider />}
           </React.Fragment>

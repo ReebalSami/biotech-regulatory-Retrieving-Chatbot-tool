@@ -181,18 +181,28 @@ async def list_documents(
     
     return await document_storage.list_documents(filters)
 
-@app.get("/documents/search", response_model=List[dict], status_code=200)
+@app.post("/documents/search", 
+    response_model=List[Dict[str, Any]],
+    tags=["Documents"],
+    summary="Search documents using semantic search")
 async def search_documents(
     query: str = Query(..., description="Search query"),
     n_results: Optional[int] = Query(5, description="Number of results to return"),
     document_storage: DocumentStorage = Depends(get_document_storage)
-) -> List[dict]:
+):
     """Search for documents using semantic search."""
     try:
-        results = await document_storage.search_documents(query, n_results)
-        return results if results else []
+        # Get document retrieval instance
+        doc_retrieval = document_storage.get_document_retrieval()
+        
+        # Perform search
+        results = await doc_retrieval.search(query, n_results)
+        return results
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error during search: {str(e)}"
+        )
 
 @app.put("/documents/{document_id}/metadata",
     tags=["Documents"],
@@ -367,27 +377,59 @@ async def root():
     return {"message": "Biotech Regulatory Compliance Tool API"}
 
 @app.post("/questionnaire")
-async def process_questionnaire(input_data: QuestionnaireInput):
+async def process_questionnaire(
+    input_data: QuestionnaireInput,
+    document_storage: DocumentStorage = Depends(get_document_storage)
+):
     """
-    Process a regulatory questionnaire.
-    
-    Parameters:
-    - input_data: Questionnaire input data
-    
-    Returns:
-    - Success message and processed data
-    
-    Raises:
-    - 500: Server error during questionnaire processing
+    Process a regulatory questionnaire and return relevant guidelines.
     """
     try:
-        # TODO: Implement document retrieval based on questionnaire input
+        # Log input data
+        print(f"Received questionnaire data: {input_data.dict()}")
+        
+        # Construct search query based on questionnaire input
+        search_query = f"""
+        medical device regulations for {input_data.intended_purpose} devices
+        {"with life-threatening use" if input_data.life_threatening else ""}
+        intended for {input_data.user_type}
+        {"requiring sterilization" if input_data.requires_sterilization else ""}
+        with {input_data.body_contact_duration} body contact duration
+        """
+        print(f"Generated search query: {search_query}")
+        
+        # Search for relevant documents
+        doc_retrieval = document_storage.get_document_retrieval()
+        results = await doc_retrieval.search(
+            query=search_query,
+            n_results=5
+        )
+        print(f"Search returned {len(results)} results")
+        
+        # Format results
+        guidelines = []
+        for result in results:
+            print(f"Processing result: {result}")
+            metadata = result.get('metadata', {})
+            if not isinstance(metadata, dict):
+                metadata = {}
+                
+            guideline = RegulatoryGuideline(
+                title=metadata.get('title', 'Untitled'),
+                content=result.get('content', ''),
+                reference=metadata.get('document_type', 'Unknown'),
+                relevance_score=result.get('score', 0.0)
+            )
+            guidelines.append(guideline)
+        
+        print(f"Returning {len(guidelines)} guidelines")
         return {
             "status": "success",
             "message": "Questionnaire processed successfully",
-            "data": input_data.dict()
+            "guidelines": guidelines
         }
     except Exception as e:
+        print(f"Error processing questionnaire: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/guidelines")

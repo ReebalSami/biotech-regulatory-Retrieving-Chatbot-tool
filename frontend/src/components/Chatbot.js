@@ -20,7 +20,7 @@ import {
   Close as CloseIcon
 } from '@mui/icons-material';
 
-const Chatbot = ({ questionnaireData }) => {
+const Chatbot = ({ questionnaireData, guidelines }) => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -45,29 +45,31 @@ const Chatbot = ({ questionnaireData }) => {
     }
   }, [messages.length]);
 
-  // Add questionnaire data to chat when available
+  // Add questionnaire data and guidelines to chat when available
   useEffect(() => {
     if (questionnaireData && Object.keys(questionnaireData).length > 0) {
       const hasSummary = messages.some(msg => 
-        msg.role === 'system' && 
-        msg.content.includes('Thank you for providing your information')
+        msg.role === 'system' && msg.content.includes('Based on your product information')
       );
-
+      
       if (!hasSummary) {
+        const summary = `Based on your product information:
+• Intended purpose: ${questionnaireData.intended_purpose}
+• Life-threatening use: ${questionnaireData.life_threatening ? 'Yes' : 'No'}
+• Intended users: ${questionnaireData.user_type}
+• Requires sterilization: ${questionnaireData.requires_sterilization ? 'Yes' : 'No'}
+• Body contact duration: ${questionnaireData.body_contact_duration}
+
+${guidelines.length > 0 ? 'I have found relevant regulatory guidelines for your product. You can view them in the Regulatory Guidelines tab. Feel free to ask me any questions about the guidelines or your regulatory requirements.' : 'I am analyzing your product information to provide relevant guidance. Please ask me any questions you have about regulatory requirements.'}`;
+
         setMessages(prev => [...prev, {
           role: 'system',
-          content: `Thank you for providing your information. I understand that:\n\n` +
-                  `• Your product purpose: ${questionnaireData.intended_purpose}\n` +
-                  `• Life-threatening use: ${questionnaireData.life_threatening ? 'Yes' : 'No'}\n` +
-                  `• Intended users: ${questionnaireData.user_type}\n` +
-                  `• Requires sterilization: ${questionnaireData.requires_sterilization ? 'Yes' : 'No'}\n` +
-                  `• Body contact duration: ${questionnaireData.body_contact_duration}\n\n` +
-                  `What would you like to know about the regulatory requirements for your product?`,
+          content: summary,
           timestamp: new Date()
         }]);
       }
     }
-  }, [questionnaireData, messages]);
+  }, [questionnaireData, guidelines, messages]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -100,7 +102,7 @@ const Chatbot = ({ questionnaireData }) => {
       formData.append('file', file);
       formData.append('chat_id', chatId);
 
-      const response = await fetch('http://localhost:8000/chat/attachments/upload', {
+      const response = await fetch('http://localhost:8001/chat/attachments/upload', {
         method: 'POST',
         body: formData,
       });
@@ -129,7 +131,7 @@ const Chatbot = ({ questionnaireData }) => {
 
   const handleRemoveAttachment = async (attachmentId) => {
     try {
-      const response = await fetch(`http://localhost:8000/chat/attachments/${attachmentId}`, {
+      const response = await fetch(`http://localhost:8001/chat/attachments/${attachmentId}`, {
         method: 'DELETE',
       });
 
@@ -164,7 +166,7 @@ const Chatbot = ({ questionnaireData }) => {
     setLoading(true);
 
     try {
-      const response = await fetch('http://localhost:8000/chat', {
+      const response = await fetch('http://localhost:8001/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

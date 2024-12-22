@@ -2,7 +2,6 @@ langchain-core>=0.1.0
 langchain-openai>=0.0.5
 langchain-community>=0.0.10
 openai>=1.0.0
-chromadb>=0.4.22
 pymongo>=4.6.1
 python-dotenv>=1.0.0
 fastapi>=0.108.0
@@ -20,6 +19,10 @@ python-jose[cryptography]>=3.3.0
 passlib[bcrypt]>=1.7.4
 aiofiles>=23.2.1
 python-magic>=0.4.27
+sentence-transformers==2.2.2
+faiss-cpu==1.7.4
+pdfplumber==0.10.3
+huggingface-hub==0.16.4
 
 # Testing dependencies
 pytest>=7.4.3
