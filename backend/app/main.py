@@ -8,7 +8,6 @@ from pathlib import Path
 from app.document_storage import DocumentStorage
 from app.utils.document_types import DocumentType, DocumentMetadata
 from app.utils.exceptions import DocumentNotFoundError
-from app.chatbot import process_query
 
 app = FastAPI(
     title="Biotech Regulatory Document Management API",
@@ -42,63 +41,116 @@ async def get_document_storage():
     """Get document storage instance."""
     return doc_storage
 
-class ChatAttachmentResponse(BaseModel):
-    document_id: str
-    filename: str
-    upload_date: datetime
+class QuestionnaireInput(BaseModel):
+    intended_purpose: str
+    life_threatening: bool
+    user_type: str
+    requires_sterilization: bool
+    body_contact_duration: str
 
-@app.post("/chat/attachments/upload", 
-    response_model=ChatAttachmentResponse,
-    tags=["Chat"],
-    summary="Upload a chat attachment")
-async def upload_chat_attachment(
-    file: UploadFile,
-    chat_id: str = Form(...),
+class RegulatoryGuideline(BaseModel):
+    title: str
+    content: str
+    reference: str
+    relevance_score: float
+
+class BulkUploadMetadata(BaseModel):
+    metadata_list: List[dict]
+
+class BulkDeleteRequest(BaseModel):
+    doc_ids: List[str]
+
+@app.get("/")
+async def root():
+    """
+    API root endpoint.
+    
+    Returns:
+    - A welcome message
+    """
+    return {"message": "Biotech Regulatory Compliance Tool API"}
+
+@app.post("/questionnaire")
+async def process_questionnaire(
+    input_data: QuestionnaireInput,
     document_storage: DocumentStorage = Depends(get_document_storage)
 ):
     """
-    Upload a document attachment for chat context.
-    The attachment will be available for 24 hours.
+    Process a regulatory questionnaire and return relevant guidelines.
     """
-    doc_id = await document_storage.store_document(
-        file=file,
-        document_type=DocumentType.USER_ATTACHMENT,
-        chat_id=chat_id
-    )
-    
-    doc_meta = await document_storage.get_document(doc_id)
-    return ChatAttachmentResponse(
-        document_id=doc_id,
-        filename=doc_meta.filename,
-        upload_date=doc_meta.upload_date
-    )
+    try:
+        # Log input data
+        print(f"Received questionnaire data: {input_data.dict()}")
+        
+        # Construct search query based on questionnaire input
+        search_query = f"""
+        medical device regulations for {input_data.intended_purpose} devices
+        {"with life-threatening use" if input_data.life_threatening else ""}
+        intended for {input_data.user_type}
+        {"requiring sterilization" if input_data.requires_sterilization else ""}
+        with {input_data.body_contact_duration} body contact duration
+        """
+        print(f"Generated search query: {search_query}")
+        
+        # Search for relevant documents
+        doc_retrieval = document_storage.get_document_retrieval()
+        results = await doc_retrieval.search(
+            query=search_query,
+            n_results=5
+        )
+        print(f"Search returned {len(results)} results")
+        
+        # Format results
+        guidelines = []
+        for result in results:
+            print(f"Processing result: {result}")
+            metadata = result.get('metadata', {})
+            if not isinstance(metadata, dict):
+                metadata = {}
+                
+            guideline = RegulatoryGuideline(
+                title=metadata.get('title', 'Untitled'),
+                content=result.get('content', ''),
+                reference=metadata.get('document_type', 'Unknown'),
+                relevance_score=result.get('score', 0.0)
+            )
+            guidelines.append(guideline)
+        
+        print(f"Returning {len(guidelines)} guidelines")
+        return {
+            "status": "success",
+            "message": "Questionnaire processed successfully",
+            "guidelines": guidelines
+        }
+    except Exception as e:
+        print(f"Error processing questionnaire: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/chat/attachments/{chat_id}",
-    response_model=List[DocumentMetadata],
-    tags=["Chat"],
-    summary="List chat attachments")
-async def list_chat_attachments(
-    chat_id: str,
-    document_storage: DocumentStorage = Depends(get_document_storage)
-):
-    """List all attachments for a specific chat session"""
-    docs = await document_storage.list_documents(doc_type=DocumentType.USER_ATTACHMENT)
-    return [doc for doc in docs if doc.chat_id == chat_id]
-
-@app.delete("/chat/attachments/{doc_id}",
-    tags=["Chat"],
-    summary="Delete chat attachment")
-async def delete_chat_attachment(
-    doc_id: str,
-    document_storage: DocumentStorage = Depends(get_document_storage)
-):
-    """Delete a chat attachment"""
-    doc = await document_storage.get_document(doc_id)
-    if doc.document_type != DocumentType.USER_ATTACHMENT:
-        raise HTTPException(status_code=400, detail="Not a chat attachment")
+@app.get("/guidelines")
+async def get_guidelines(query: str):
+    """
+    Get regulatory guidelines based on a query.
     
-    await document_storage.delete_document(doc_id)
-    return {"message": "Attachment deleted successfully"}
+    Parameters:
+    - query: Search query for guidelines
+    
+    Returns:
+    - List of relevant guidelines
+    
+    Raises:
+    - 500: Server error during guideline retrieval
+    """
+    try:
+        # TODO: Implement guideline retrieval logic
+        sample_guideline = RegulatoryGuideline(
+            title="Sample Guideline",
+            content="This is a placeholder guideline content",
+            reference="REF-001",
+            relevance_score=0.95
+        )
+        return [sample_guideline]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/documents/upload", 
     response_model=dict,
@@ -230,233 +282,6 @@ async def delete_document(document_id: str, document_storage: DocumentStorage = 
         return {"status": "success"}
     except DocumentNotFoundError:
         raise HTTPException(status_code=404, detail="Document not found")
-
-@app.post("/chat", 
-    response_model=dict,
-    tags=["Chat"],
-    summary="Process a chat message")
-async def chat(
-    query: str = Body(..., embed=True, description="User's question"),
-    chat_id: str = Body(..., embed=True, description="Chat session ID"),
-    context_size: int = Body(3, embed=True, description="Number of relevant documents to consider"),
-    document_storage: DocumentStorage = Depends(get_document_storage)
-):
-    """Process a chat message and return a response with relevant sources."""
-    try:
-        # Get chat attachments
-        attachments = await document_storage.list_documents(doc_type=DocumentType.USER_ATTACHMENT)
-        chat_attachments = [doc for doc in attachments if doc.chat_id == chat_id]
-        
-        # Get reference documents
-        ref_docs = await document_storage.list_documents(doc_type=DocumentType.REFERENCE)
-        
-        # Process query using both reference docs and chat attachments
-        response, sources = await process_query(
-            query=query,
-            doc_storage=document_storage,
-            reference_docs=ref_docs,
-            chat_attachments=chat_attachments,
-            context_size=context_size
-        )
-        
-        return {
-            "response": response,
-            "sources": sources
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-# Admin endpoints for managing reference documents
-@app.post("/admin/documents/upload",
-    response_model=dict,
-    tags=["Admin"],
-    summary="Upload a reference document")
-async def upload_reference_document(
-    file: UploadFile,
-    title: str = Form(...),
-    description: str = Form(None),
-    categories: List[str] = Form([]),
-    document_storage: DocumentStorage = Depends(get_document_storage)
-):
-    """Upload a reference document with metadata"""
-    try:
-        doc_id = await document_storage.store_document(
-            file=file,
-            document_type=DocumentType.REFERENCE,
-            title=title,
-            description=description,
-            categories=categories
-        )
-        return {"id": doc_id}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/admin/documents",
-    response_model=List[dict],
-    tags=["Admin"],
-    summary="List all reference documents")
-async def list_reference_documents(
-    document_storage: DocumentStorage = Depends(get_document_storage)
-):
-    """List all reference documents"""
-    try:
-        docs = await document_storage.list_documents(doc_type=DocumentType.REFERENCE)
-        return [
-            {
-                "id": doc.id,
-                "filename": doc.filename,
-                "title": doc.title,
-                "description": doc.description,
-                "categories": doc.categories,
-                "upload_date": doc.upload_date
-            }
-            for doc in docs
-        ]
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.delete("/admin/documents/{doc_id}",
-    tags=["Admin"],
-    summary="Delete a reference document")
-async def delete_reference_document(
-    doc_id: str,
-    document_storage: DocumentStorage = Depends(get_document_storage)
-):
-    """Delete a reference document (admin only)"""
-    try:
-        doc = await document_storage.get_document(doc_id)
-        if doc.document_type != DocumentType.REFERENCE:
-            raise HTTPException(status_code=400, detail="Not a reference document")
-        
-        await document_storage.delete_document(doc_id)
-        return {"message": "Document deleted successfully"}
-    except DocumentNotFoundError:
-        raise HTTPException(status_code=404, detail="Document not found")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-# Data models
-class QuestionnaireInput(BaseModel):
-    intended_purpose: str
-    life_threatening: bool
-    user_type: str
-    requires_sterilization: bool
-    body_contact_duration: str
-
-class ChatMessage(BaseModel):
-    message: str
-    questionnaire_data: Optional[dict] = None
-
-class ChatResponse(BaseModel):
-    response: str
-    sources: Optional[List[dict]] = None
-
-class RegulatoryGuideline(BaseModel):
-    title: str
-    content: str
-    reference: str
-    relevance_score: float
-
-class BulkUploadMetadata(BaseModel):
-    metadata_list: List[dict]
-
-class BulkDeleteRequest(BaseModel):
-    doc_ids: List[str]
-
-@app.get("/")
-async def root():
-    """
-    API root endpoint.
-    
-    Returns:
-    - A welcome message
-    
-    Raises:
-    - None
-    """
-    return {"message": "Biotech Regulatory Compliance Tool API"}
-
-@app.post("/questionnaire")
-async def process_questionnaire(
-    input_data: QuestionnaireInput,
-    document_storage: DocumentStorage = Depends(get_document_storage)
-):
-    """
-    Process a regulatory questionnaire and return relevant guidelines.
-    """
-    try:
-        # Log input data
-        print(f"Received questionnaire data: {input_data.dict()}")
-        
-        # Construct search query based on questionnaire input
-        search_query = f"""
-        medical device regulations for {input_data.intended_purpose} devices
-        {"with life-threatening use" if input_data.life_threatening else ""}
-        intended for {input_data.user_type}
-        {"requiring sterilization" if input_data.requires_sterilization else ""}
-        with {input_data.body_contact_duration} body contact duration
-        """
-        print(f"Generated search query: {search_query}")
-        
-        # Search for relevant documents
-        doc_retrieval = document_storage.get_document_retrieval()
-        results = await doc_retrieval.search(
-            query=search_query,
-            n_results=5
-        )
-        print(f"Search returned {len(results)} results")
-        
-        # Format results
-        guidelines = []
-        for result in results:
-            print(f"Processing result: {result}")
-            metadata = result.get('metadata', {})
-            if not isinstance(metadata, dict):
-                metadata = {}
-                
-            guideline = RegulatoryGuideline(
-                title=metadata.get('title', 'Untitled'),
-                content=result.get('content', ''),
-                reference=metadata.get('document_type', 'Unknown'),
-                relevance_score=result.get('score', 0.0)
-            )
-            guidelines.append(guideline)
-        
-        print(f"Returning {len(guidelines)} guidelines")
-        return {
-            "status": "success",
-            "message": "Questionnaire processed successfully",
-            "guidelines": guidelines
-        }
-    except Exception as e:
-        print(f"Error processing questionnaire: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-@app.get("/guidelines")
-async def get_guidelines(query: str):
-    """
-    Get regulatory guidelines based on a query.
-    
-    Parameters:
-    - query: Search query for guidelines
-    
-    Returns:
-    - List of relevant guidelines
-    
-    Raises:
-    - 500: Server error during guideline retrieval
-    """
-    try:
-        # TODO: Implement guideline retrieval logic
-        sample_guideline = RegulatoryGuideline(
-            title="Sample Guideline",
-            content="This is a placeholder guideline content",
-            reference="REF-001",
-            relevance_score=0.95
-        )
-        return [sample_guideline]
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/documents/bulk-upload")
 async def bulk_upload_documents(

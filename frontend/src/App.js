@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { Box, Container, Tab, Tabs, ThemeProvider, createTheme, CssBaseline, alpha } from '@mui/material';
-import Chatbot from './components/Chatbot';
+import { Box, Container, Tab, Tabs, ThemeProvider, createTheme, CssBaseline } from '@mui/material';
 import Questionnaire from './components/Questionnaire';
 import RegulatoryDisplay from './components/RegulatoryDisplay';
 
@@ -53,35 +52,29 @@ const theme = createTheme({
       fontWeight: 600,
       letterSpacing: '-0.025em',
     },
+    subtitle1: {
+      letterSpacing: 0,
+    },
+    subtitle2: {
+      letterSpacing: 0,
+    },
     body1: {
-      letterSpacing: '-0.015em',
+      letterSpacing: 0,
     },
     body2: {
-      letterSpacing: '-0.015em',
+      letterSpacing: 0,
+    },
+    button: {
+      letterSpacing: 0,
+      textTransform: 'none',
+      fontWeight: 600,
     },
   },
   components: {
-    MuiCssBaseline: {
-      styleOverrides: {
-        body: {
-          background: 'linear-gradient(135deg, #F2F2F7 0%, #E5E5EA 100%)',
-          minHeight: '100vh',
-        },
-      },
-    },
-    MuiPaper: {
-      styleOverrides: {
-        root: {
-          backgroundImage: 'none',
-          boxShadow: '0 2px 20px rgba(0,0,0,0.05)',
-        },
-      },
-    },
     MuiButton: {
       styleOverrides: {
         root: {
-          textTransform: 'none',
-          fontWeight: 600,
+          borderRadius: 8,
           padding: '8px 16px',
           transition: 'all 0.2s ease-in-out',
           '&:hover': {
@@ -90,16 +83,19 @@ const theme = createTheme({
         },
       },
     },
-    MuiTab: {
+    MuiCard: {
       styleOverrides: {
         root: {
-          textTransform: 'none',
-          fontWeight: 600,
-          fontSize: '1rem',
-          minWidth: 100,
-          transition: 'all 0.2s ease-in-out',
-          '&.Mui-selected': {
-            color: '#007AFF',
+          borderRadius: 16,
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+        },
+      },
+    },
+    MuiTextField: {
+      styleOverrides: {
+        root: {
+          '& .MuiOutlinedInput-root': {
+            borderRadius: 8,
           },
         },
       },
@@ -109,6 +105,7 @@ const theme = createTheme({
 
 function TabPanel(props) {
   const { children, value, index, ...other } = props;
+
   return (
     <div
       role="tabpanel"
@@ -119,7 +116,7 @@ function TabPanel(props) {
       style={{ height: '100%' }}
     >
       {value === index && (
-        <Box sx={{ height: '100%' }}>
+        <Box sx={{ height: '100%', pt: 2 }}>
           {children}
         </Box>
       )}
@@ -128,13 +125,12 @@ function TabPanel(props) {
 }
 
 function App() {
-  const [tabValue, setTabValue] = useState(0);
-  const [messages, setMessages] = useState([]);
-  const [questionnaireData, setQuestionnaireData] = useState(null);
+  const [value, setValue] = useState(0);
   const [guidelines, setGuidelines] = useState([]);
+  const [questionnaireData, setQuestionnaireData] = useState(null);
 
-  const handleTabChange = (event, newValue) => {
-    setTabValue(newValue);
+  const handleChange = (event, newValue) => {
+    setValue(newValue);
   };
 
   const handleQuestionnaireSubmit = async (formData) => {
@@ -154,7 +150,7 @@ function App() {
       const data = await response.json();
       setQuestionnaireData(formData);
       setGuidelines(data.guidelines);
-      setTabValue(1); // Switch to guidelines tab
+      setValue(1); // Switch to RegulatoryDisplay tab
     } catch (error) {
       console.error('Error fetching guidelines:', error);
     }
@@ -163,48 +159,31 @@ function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <Box
-        sx={{
-          minHeight: '100vh',
-          backgroundColor: 'background.default',
-          pt: 4,
-          pb: 8,
-        }}
-      >
-        <Container maxWidth="lg">
-          <Box
-            sx={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 3,
-              height: 'calc(100vh - 100px)',
-            }}
-          >
-            <Box sx={{ borderBottom: 0 }}>
-              <Tabs
-                value={tabValue}
-                onChange={handleTabChange}
-                centered
-                sx={{
-                  '& .MuiTabs-flexContainer': {
-                    gap: 2,
-                  },
-                }}
-              >
-                <Tab label="Questionnaire" />
-                <Tab label="Guidelines" />
-                <Tab label="Chat Assistant" />
+      <Box sx={{ 
+        minHeight: '100vh',
+        backgroundColor: 'background.default',
+        pt: 3,
+        pb: 3
+      }}>
+        <Container maxWidth="lg" sx={{ height: '100%' }}>
+          <Box sx={{ 
+            bgcolor: 'background.paper',
+            borderRadius: 4,
+            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+            overflow: 'hidden',
+            height: 'calc(100vh - 48px)'
+          }}>
+            <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+              <Tabs value={value} onChange={handleChange} aria-label="app tabs">
+                <Tab label="Questionnaire" id="tab-0" aria-controls="tabpanel-0" />
+                <Tab label="Regulatory Guidelines" id="tab-1" aria-controls="tabpanel-1" />
               </Tabs>
             </Box>
-
-            <TabPanel value={tabValue} index={0}>
+            <TabPanel value={value} index={0}>
               <Questionnaire onSubmit={handleQuestionnaireSubmit} />
             </TabPanel>
-            <TabPanel value={tabValue} index={1}>
+            <TabPanel value={value} index={1}>
               <RegulatoryDisplay guidelines={guidelines} questionnaireData={questionnaireData} />
-            </TabPanel>
-            <TabPanel value={tabValue} index={2}>
-              <Chatbot messages={messages} setMessages={setMessages} />
             </TabPanel>
           </Box>
         </Container>

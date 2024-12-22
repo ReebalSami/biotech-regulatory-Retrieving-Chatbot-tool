@@ -6,7 +6,6 @@ A comprehensive tool for biotech companies to streamline regulatory compliance f
 
 - Interactive questionnaire for product information gathering
 - Intelligent document retrieval system for regulatory guidelines
-- AI-powered chatbot for regulatory compliance assistance
 - Modern, Apple-inspired user interface with:
   - Smooth animations and transitions
   - Frosted glass effects
@@ -148,7 +147,6 @@ biotech_regulatory_tool/
 │   ├── app/
 │   │   ├── __init__.py
 │   │   ├── main.py
-│   │   ├── chatbot.py
 │   │   └── document_retrieval.py
 │   ├── tests/
 │   └── requirements.txt
@@ -156,8 +154,7 @@ biotech_regulatory_tool/
 │   ├── src/
 │   │   ├── components/
 │   │   │   ├── Questionnaire.js
-│   │   │   ├── RegulatoryDisplay.js
-│   │   │   └── Chatbot.js
+│   │   │   └── RegulatoryDisplay.js
 │   │   ├── App.js
 │   │   └── index.js
 │   └── package.json
