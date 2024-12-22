@@ -13,7 +13,7 @@ class ChatGPTService:
             )
             
         self.client = AsyncOpenAI(api_key=api_key)
-        self.max_context_length = 8192  # Maximum context length for GPT-4
+        self.max_context_length = 7000  # Maximum context length for GPT-4
         
         self.system_prompt = """You are an AI assistant specializing in biotech regulatory compliance. 
         Your role is to help users understand and navigate regulatory requirements for biotech products.
