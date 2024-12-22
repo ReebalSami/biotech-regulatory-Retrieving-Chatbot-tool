@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from app.routers.chat import router, get_chatgpt_service
 from app.services.chatgpt_service import ChatGPTService
+from app.document_storage import Document
 
 # Create a fixture for the FastAPI app
 @pytest.fixture
@@ -28,6 +29,24 @@ def chat_service(mock_openai):
          patch.dict('os.environ', {'OPENAI_API_KEY': 'test-key'}):
         service = ChatGPTService()
         return service
+
+@pytest.fixture
+def mock_chatgpt_service():
+    service = AsyncMock()
+    service.generate_response = AsyncMock(return_value="Test response")
+    return service
+
+@pytest.fixture
+def mock_document_storage():
+    storage = AsyncMock()
+    storage.store_document = AsyncMock(return_value="test_doc_id")
+    storage.get_document = AsyncMock(return_value=Document(
+        id="test_doc_id",
+        filename="test.txt",
+        content=b"Test content",
+        metadata={"source": "chat_attachment"}
+    ))
+    return storage
 
 @pytest.mark.asyncio
 async def test_chat_endpoint_success(client, chat_service, mock_openai):
@@ -133,3 +152,94 @@ async def test_chat_endpoint_internal_error(client, chat_service, mock_openai):
         
         assert response.status_code == 500
         assert "Internal server error" in response.json()["detail"]
+
+@pytest.mark.asyncio
+async def test_chat_endpoint_success_with_attachment(mock_chatgpt_service, mock_document_storage):
+    request = ChatRequest(message="Test message", attachment_ids=["test_doc_id"])
+    response = await router.endpoints["/"]["POST"](
+        request=request,
+        chatgpt_service=mock_chatgpt_service,
+        document_storage=mock_document_storage
+    )
+    assert response.response == "Test response"
+    assert response.processed_attachments == ["test.txt"]
+    mock_document_storage.get_document.assert_called_once_with("test_doc_id")
+
+@pytest.mark.asyncio
+async def test_chat_endpoint_attachment_error(mock_chatgpt_service, mock_document_storage):
+    mock_document_storage.get_document = AsyncMock(side_effect=Exception("Test error"))
+    request = ChatRequest(message="Test message", attachment_ids=["test_doc_id"])
+    with pytest.raises(HTTPException) as exc_info:
+        await router.endpoints["/"]["POST"](
+            request=request,
+            chatgpt_service=mock_chatgpt_service,
+            document_storage=mock_document_storage
+        )
+    assert exc_info.value.status_code == 400
+    assert "Error processing attachment" in str(exc_info.value.detail)
+
+@pytest.mark.asyncio
+async def test_upload_attachments_success(mock_document_storage):
+    mock_files = [
+        AsyncMock(
+            filename="test1.txt",
+            read=AsyncMock(return_value=b"Test content 1")
+        ),
+        AsyncMock(
+            filename="test2.txt",
+            read=AsyncMock(return_value=b"Test content 2")
+        )
+    ]
+    
+    response = await router.endpoints["/upload"]["POST"](
+        files=mock_files,
+        document_storage=mock_document_storage
+    )
+    
+    assert len(response) == 2
+    assert all(doc_id == "test_doc_id" for doc_id in response)
+    assert mock_document_storage.store_document.call_count == 2
+
+@pytest.mark.asyncio
+async def test_upload_attachments_error(mock_document_storage):
+    mock_document_storage.store_document = AsyncMock(side_effect=Exception("Test error"))
+    mock_files = [
+        AsyncMock(
+            filename="test.txt",
+            read=AsyncMock(return_value=b"Test content")
+        )
+    ]
+    
+    with pytest.raises(HTTPException) as exc_info:
+        await router.endpoints["/upload"]["POST"](
+            files=mock_files,
+            document_storage=mock_document_storage
+        )
+    
+    assert exc_info.value.status_code == 400
+    assert "Error processing file" in str(exc_info.value.detail)
+
+@pytest.mark.asyncio
+async def test_chat_endpoint_no_message_with_attachment(mock_chatgpt_service):
+    request = ChatRequest(message="", attachment_ids=["test_doc_id"])
+    with pytest.raises(HTTPException) as exc_info:
+        await router.endpoints["/"]["POST"](
+            request=request,
+            chatgpt_service=mock_chatgpt_service
+        )
+    assert exc_info.value.status_code == 400
+    assert "Message cannot be empty" in str(exc_info.value.detail)
+
+@pytest.mark.asyncio
+async def test_chat_endpoint_service_error_with_attachment(mock_chatgpt_service):
+    mock_chatgpt_service.generate_response = AsyncMock(
+        side_effect=Exception("Test error")
+    )
+    request = ChatRequest(message="Test message", attachment_ids=["test_doc_id"])
+    with pytest.raises(HTTPException) as exc_info:
+        await router.endpoints["/"]["POST"](
+            request=request,
+            chatgpt_service=mock_chatgpt_service
+        )
+    assert exc_info.value.status_code == 500
+    assert "Error generating response" in str(exc_info.value.detail)

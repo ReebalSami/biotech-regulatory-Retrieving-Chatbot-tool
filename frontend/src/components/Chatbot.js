@@ -9,8 +9,14 @@ import {
   Fade,
   useTheme,
   CircularProgress,
+  List,
+  ListItem,
+  ListItemText,
+  Button,
+  Chip,
 } from '@mui/material';
 import SendRoundedIcon from '@mui/icons-material/SendRounded';
+import AttachFileIcon from '@mui/icons-material/AttachFile';
 import { styled } from '@mui/material/styles';
 
 // Styled components
@@ -135,6 +141,9 @@ function Chatbot() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [files, setFiles] = useState([]);
+  const [attachmentIds, setAttachmentIds] = useState([]);
+  const fileInputRef = useRef(null);
   const messagesEndRef = useRef(null);
   const theme = useTheme();
 
@@ -146,13 +155,51 @@ function Chatbot() {
     scrollToBottom();
   }, [messages]);
 
+  const handleFileUpload = async (event) => {
+    const newFiles = Array.from(event.target.files);
+    setFiles(prevFiles => [...prevFiles, ...newFiles]);
+    
+    const formData = new FormData();
+    for (const file of newFiles) {
+      formData.append('files', file);
+    }
+    
+    try {
+      const response = await fetch('http://localhost:8000/api/chat/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to upload files');
+      }
+      
+      const newIds = await response.json();
+      setAttachmentIds(prev => [...prev, ...newIds]);
+    } catch (error) {
+      console.error('Error uploading files:', error);
+    }
+  };
+
+  const handleRemoveFile = (index) => {
+    setFiles(files.filter((_, i) => i !== index));
+    setAttachmentIds(attachmentIds.filter((_, i) => i !== index));
+  };
+
   const handleSend = async () => {
-    if (!input.trim()) return;
+    if (!input.trim() && files.length === 0) return;
+
+    // Wait for all files to be uploaded before sending the message
+    if (files.length > attachmentIds.length) {
+      console.log('Waiting for files to finish uploading...');
+      return;
+    }
 
     const userMessage = {
-      text: input.trim(),
+      text: input.trim() || "Please analyze the attached document.",
       isUser: true,
       timestamp: new Date(),
+      attachments: files.map(f => f.name),
     };
 
     setMessages(prev => [...prev, userMessage]);
@@ -167,12 +214,14 @@ function Chatbot() {
         },
         body: JSON.stringify({
           message: userMessage.text,
-          context: []
+          context: [],
+          attachment_ids: attachmentIds,
         }),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to get response from AI');
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to get response from AI');
       }
 
       const data = await response.json();
@@ -181,14 +230,18 @@ function Chatbot() {
         text: data.response,
         isUser: false,
         timestamp: new Date(),
-        sources: data.sources,
+        processedAttachments: data.processed_attachments,
       };
 
       setMessages(prev => [...prev, assistantMessage]);
+      
+      // Clear files and attachment IDs after successful message
+      setFiles([]);
+      setAttachmentIds([]);
     } catch (error) {
       console.error('Error sending message:', error);
       const errorMessage = {
-        text: "I apologize, but I'm having trouble connecting to the server. Please try again later.",
+        text: error.message,
         isUser: false,
         timestamp: new Date(),
         isError: true,
@@ -238,6 +291,13 @@ function Chatbot() {
                       >
                         <Typography variant="body1">{message.text}</Typography>
                       </MessageBubble>
+                      {message.attachments && (
+                        <Box sx={{ mt: 1, mr: 2 }}>
+                          <Typography variant="caption" color="text.secondary">
+                            Attachments: {message.attachments.join(', ')}
+                          </Typography>
+                        </Box>
+                      )}
                       {message.sources && (
                         <Box sx={{ mt: 1, mr: 2 }}>
                           <Typography variant="caption" color="text.secondary">
@@ -280,6 +340,13 @@ function Chatbot() {
                       >
                         <Typography variant="body1">{message.text}</Typography>
                       </MessageBubble>
+                      {message.attachments && (
+                        <Box sx={{ mt: 1, ml: 2 }}>
+                          <Typography variant="caption" color="text.secondary">
+                            Attachments: {message.attachments.join(', ')}
+                          </Typography>
+                        </Box>
+                      )}
                       {message.sources && (
                         <Box sx={{ mt: 1, ml: 2 }}>
                           <Typography variant="caption" color="text.secondary">
@@ -306,6 +373,13 @@ function Chatbot() {
                           ))}
                         </Box>
                       )}
+                      {message.processedAttachments && (
+                        <Box sx={{ mt: 1, ml: 2 }}>
+                          <Typography variant="caption" color="text.secondary">
+                            Processed files: {message.processedAttachments.join(', ')}
+                          </Typography>
+                        </Box>
+                      )}
                     </MessageContent>
                   </>
                 )}
@@ -316,7 +390,7 @@ function Chatbot() {
         {isTyping && (
           <Fade in timeout={500}>
             <TypingIndicator>
-              <CircularProgress size={16} thickness={6} />
+              <CircularProgress size={16} />
               <Typography variant="caption" color="text.secondary">
                 Assistant is typing...
               </Typography>
@@ -326,7 +400,37 @@ function Chatbot() {
         <div ref={messagesEndRef} />
       </MessageList>
       <InputContainer>
+        {files.length > 0 && (
+          <Box sx={{ mb: 2 }}>
+            <Typography variant="subtitle2" gutterBottom>
+              Attached Files:
+            </Typography>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+              {files.map((file, index) => (
+                <Chip
+                  key={index}
+                  label={file.name}
+                  onDelete={() => handleRemoveFile(index)}
+                  size="small"
+                />
+              ))}
+            </Box>
+          </Box>
+        )}
         <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+          <input
+            type="file"
+            multiple
+            onChange={handleFileUpload}
+            style={{ display: 'none' }}
+            ref={fileInputRef}
+          />
+          <IconButton
+            color="primary"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <AttachFileIcon />
+          </IconButton>
           <StyledTextField
             fullWidth
             placeholder="Type your message..."
@@ -339,7 +443,7 @@ function Chatbot() {
           />
           <SendButton
             onClick={handleSend}
-            disabled={!input.trim() || isTyping}
+            disabled={!input.trim() && files.length === 0}
             size="small"
           >
             <SendRoundedIcon fontSize="small" />

@@ -81,6 +81,50 @@ class DocumentStorage:
                 os.remove(file_path)
             raise Exception(f"Failed to store document: {str(e)}")
     
+    async def store_document_content(
+        self,
+        filename: str,
+        content: bytes,
+        metadata: Optional[dict] = None
+    ) -> str:
+        """Store document content directly and return its ID"""
+        try:
+            # Generate unique ID
+            doc_id = str(uuid.uuid4())
+            
+            # Store in user attachments directory
+            file_path = self.user_dir / f"{doc_id}_{filename}"
+            
+            # Save file
+            with open(file_path, 'wb') as f:
+                f.write(content)
+            
+            # Create metadata
+            meta = {
+                "id": doc_id,
+                "filename": filename,
+                "title": filename,
+                "description": None,
+                "categories": [],
+                "document_type": DocumentType.USER_ATTACHMENT.value,
+                "chat_id": None,
+                "upload_date": datetime.now().isoformat(),
+                "file_path": str(file_path)
+            }
+            
+            if metadata:
+                meta.update(metadata)
+                
+            self.metadata[doc_id] = meta
+            self._save_metadata()
+            return doc_id
+            
+        except Exception as e:
+            # Clean up if something goes wrong
+            if 'file_path' in locals() and os.path.exists(file_path):
+                os.remove(file_path)
+            raise Exception(f"Failed to store document: {str(e)}")
+    
     async def get_document(self, doc_id: str) -> DocumentMetadata:
         """Get document metadata"""
         if doc_id not in self.metadata:
@@ -89,10 +133,10 @@ class DocumentStorage:
         meta = self.metadata[doc_id]
         return DocumentMetadata(**meta)
     
-    async def get_document_content(self, doc_id: str) -> str:
+    async def get_document_content(self, doc_id: str) -> bytes:
         """Get document content"""
         meta = await self.get_document(doc_id)
-        with open(meta.file_path, 'r') as f:
+        with open(meta.file_path, 'rb') as f:
             return f.read()
     
     async def list_documents(

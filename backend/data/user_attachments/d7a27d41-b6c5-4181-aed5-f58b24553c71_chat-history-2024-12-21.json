@@ -1,0 +1,46 @@
+{
+  "timestamp": "2024-12-21T17:24:05.231Z",
+  "messages": [
+    {
+      "type": "system",
+      "content": "Questionnaire data updated. I will now provide responses based on your specific case:",
+      "timestamp": "2024-12-21T17:22:59.486Z",
+      "questionnaireSummary": {
+        "Product Purpose": "Diagnostic",
+        "Life-threatening Use": "Yes",
+        "User Type": "Healthcare Professionals",
+        "Requires Sterilization": "Yes",
+        "Body Contact Duration": "3 days"
+      }
+    },
+    {
+      "type": "user",
+      "content": "what is the most important regulation for such a device?",
+      "timestamp": "2024-12-21T17:23:46.284Z"
+    },
+    {
+      "type": "bot",
+      "content": "For a diagnostic device intended for use by healthcare professionals, especially one with a life-threatening use, the most important regulation to consider would likely be the FDA's Quality System Regulation (QSR) also known as 21 CFR Part 820. This regulation sets forth requirements for the design, manufacture, packaging, labeling, storage, installation, and servicing of medical devices. Given the critical nature of the device, ensuring compliance with the QSR is essential to guarantee its safety and effectiveness in healthcare settings. Additionally, considering the need for sterilization and the duration of body contact, adherence to standards related to sterilization processes and biocompatibility testing would be crucial aspects to address in order to meet regulatory requirements and ensure patient safety.",
+      "sources": [
+        {
+          "title": "",
+          "content": "Medical devices in the EU must comply with the Medical Device Regulation (MDR) 2017/745. Key requirements include:\n1. Safety and Performance Requirements\n2. Clinical Evaluation and Investigation\n3. Ri...",
+          "jurisdiction": "Unknown"
+        },
+        {
+          "title": "",
+          "content": "Classification of medical devices in the EU is based on:\n- Duration of use (temporary, short-term, or long-term)\n- Invasiveness (invasive, non-invasive)\n- Active/non-active devices\n- Intended purpose\n...",
+          "jurisdiction": "Unknown"
+        }
+      ],
+      "timestamp": "2024-12-21T17:23:49.373Z"
+    }
+  ],
+  "questionnaireData": {
+    "intended_purpose": "Diagnostic",
+    "life_threatening": true,
+    "user_type": "Healthcare Professionals",
+    "requires_sterilization": true,
+    "body_contact_duration": "3 days"
+  }
+}

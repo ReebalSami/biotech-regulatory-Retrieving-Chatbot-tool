@@ -4,10 +4,13 @@ Text extraction module for processing PDF documents and preparing them for searc
 
 import PyPDF2
 import re
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Union
 from pathlib import Path
 import json
 import os
+import io
+import magic
+from docx import Document
 
 class TextExtractor:
     def __init__(self, cache_dir: str = "./data/text_cache"):
@@ -177,3 +180,56 @@ class TextExtractor:
                 raise Exception(f"Error extracting text from file {file_path}: {str(e)}")
         else:
             raise ValueError(f"Unsupported file type: {ext}")
+
+async def extract_text_from_file(content: Union[bytes, str], filename: str) -> str:
+    """
+    Extract text from various file types (PDF, DOCX, TXT)
+    
+    Args:
+        content: File content as bytes or string
+        filename: Name of the file
+        
+    Returns:
+        Extracted text from the file
+        
+    Raises:
+        ValueError: If file type is not supported
+    """
+    file_ext = os.path.splitext(filename)[1].lower()
+    
+    if isinstance(content, str):
+        return content
+        
+    mime = magic.Magic(mime=True)
+    file_type = mime.from_buffer(content)
+    
+    if file_type == 'application/pdf' or file_ext == '.pdf':
+        # Handle PDF files
+        pdf_file = io.BytesIO(content)
+        pdf_reader = PyPDF2.PdfReader(pdf_file)
+        text = ""
+        for page in pdf_reader.pages:
+            text += page.extract_text() + "\n"
+        return text
+        
+    elif file_type == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' or file_ext == '.docx':
+        # Handle DOCX files
+        docx_file = io.BytesIO(content)
+        doc = Document(docx_file)
+        text = ""
+        for paragraph in doc.paragraphs:
+            text += paragraph.text + "\n"
+        return text
+        
+    elif file_type.startswith('text/') or file_ext in ['.txt', '.md', '.json']:
+        # Handle text files
+        try:
+            return content.decode('utf-8')
+        except UnicodeDecodeError:
+            try:
+                return content.decode('latin-1')
+            except UnicodeDecodeError:
+                raise ValueError(f"Could not decode text file: {filename}")
+                
+    else:
+        raise ValueError(f"Unsupported file type: {file_type} for file: {filename}")
