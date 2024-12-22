@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Box, Container, Tab, Tabs, ThemeProvider, createTheme, CssBaseline } from '@mui/material';
+import { Box, Container, Tab, Tabs, ThemeProvider, createTheme, CssBaseline, alpha } from '@mui/material';
 import Chatbot from './components/Chatbot';
 import Questionnaire from './components/Questionnaire';
 import RegulatoryDisplay from './components/RegulatoryDisplay';
@@ -8,10 +8,101 @@ import RegulatoryDisplay from './components/RegulatoryDisplay';
 const theme = createTheme({
   palette: {
     primary: {
-      main: '#1976d2',
+      main: '#007AFF',
+      light: '#5856D6',
+      dark: '#0055FF',
     },
     secondary: {
-      main: '#dc004e',
+      main: '#5856D6',
+    },
+    background: {
+      default: '#F2F2F7',
+      paper: '#FFFFFF',
+    },
+    text: {
+      primary: '#1C1C1E',
+      secondary: '#6C6C70',
+    },
+  },
+  shape: {
+    borderRadius: 12,
+  },
+  typography: {
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+    h1: {
+      fontWeight: 700,
+      letterSpacing: '-0.025em',
+    },
+    h2: {
+      fontWeight: 700,
+      letterSpacing: '-0.025em',
+    },
+    h3: {
+      fontWeight: 600,
+      letterSpacing: '-0.025em',
+    },
+    h4: {
+      fontWeight: 600,
+      letterSpacing: '-0.025em',
+    },
+    h5: {
+      fontWeight: 600,
+      letterSpacing: '-0.025em',
+    },
+    h6: {
+      fontWeight: 600,
+      letterSpacing: '-0.025em',
+    },
+    body1: {
+      letterSpacing: '-0.015em',
+    },
+    body2: {
+      letterSpacing: '-0.015em',
+    },
+  },
+  components: {
+    MuiCssBaseline: {
+      styleOverrides: {
+        body: {
+          background: 'linear-gradient(135deg, #F2F2F7 0%, #E5E5EA 100%)',
+          minHeight: '100vh',
+        },
+      },
+    },
+    MuiPaper: {
+      styleOverrides: {
+        root: {
+          backgroundImage: 'none',
+          boxShadow: '0 2px 20px rgba(0,0,0,0.05)',
+        },
+      },
+    },
+    MuiButton: {
+      styleOverrides: {
+        root: {
+          textTransform: 'none',
+          fontWeight: 600,
+          padding: '8px 16px',
+          transition: 'all 0.2s ease-in-out',
+          '&:hover': {
+            transform: 'translateY(-1px)',
+          },
+        },
+      },
+    },
+    MuiTab: {
+      styleOverrides: {
+        root: {
+          textTransform: 'none',
+          fontWeight: 600,
+          fontSize: '1rem',
+          minWidth: 100,
+          transition: 'all 0.2s ease-in-out',
+          '&.Mui-selected': {
+            color: '#007AFF',
+          },
+        },
+      },
     },
   },
 });
@@ -61,46 +152,63 @@ function App() {
       }
 
       const data = await response.json();
-      setGuidelines(data.guidelines || []);
       setQuestionnaireData(formData);
-      setTabValue(1); // Switch to the Regulatory Guidelines tab
+      setGuidelines(data.guidelines);
+      setTabValue(1); // Switch to guidelines tab
     } catch (error) {
       console.error('Error fetching guidelines:', error);
-      // You might want to show an error message to the user here
     }
   };
 
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <Container maxWidth="xl" sx={{ height: '100vh', py: 2 }}>
-        <Box sx={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
-          <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-            <Tabs value={tabValue} onChange={handleTabChange} aria-label="app navigation">
-              <Tab label="Product Classification" />
-              <Tab label="Regulatory Guidelines" />
-              <Tab label="Chat Assistant" />
-            </Tabs>
-          </Box>
+      <Box
+        sx={{
+          minHeight: '100vh',
+          backgroundColor: 'background.default',
+          pt: 4,
+          pb: 8,
+        }}
+      >
+        <Container maxWidth="lg">
+          <Box
+            sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 3,
+              height: 'calc(100vh - 100px)',
+            }}
+          >
+            <Box sx={{ borderBottom: 0 }}>
+              <Tabs
+                value={tabValue}
+                onChange={handleTabChange}
+                centered
+                sx={{
+                  '& .MuiTabs-flexContainer': {
+                    gap: 2,
+                  },
+                }}
+              >
+                <Tab label="Questionnaire" />
+                <Tab label="Guidelines" />
+                <Tab label="Chat Assistant" />
+              </Tabs>
+            </Box>
 
-          <Box sx={{ flex: 1, mt: 2, overflow: 'hidden' }}>
             <TabPanel value={tabValue} index={0}>
               <Questionnaire onSubmit={handleQuestionnaireSubmit} />
             </TabPanel>
             <TabPanel value={tabValue} index={1}>
-              <RegulatoryDisplay guidelines={guidelines} />
+              <RegulatoryDisplay guidelines={guidelines} questionnaireData={questionnaireData} />
             </TabPanel>
             <TabPanel value={tabValue} index={2}>
-              <Chatbot
-                messages={messages}
-                setMessages={setMessages}
-                questionnaireData={questionnaireData}
-                guidelines={guidelines}
-              />
+              <Chatbot messages={messages} setMessages={setMessages} />
             </TabPanel>
           </Box>
-        </Box>
-      </Container>
+        </Container>
+      </Box>
     </ThemeProvider>
   );
 }

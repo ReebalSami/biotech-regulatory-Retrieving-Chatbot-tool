@@ -7,7 +7,12 @@ A comprehensive tool for biotech companies to streamline regulatory compliance f
 - Interactive questionnaire for product information gathering
 - Intelligent document retrieval system for regulatory guidelines
 - AI-powered chatbot for regulatory compliance assistance
-- Modern, user-friendly interface
+- Modern, Apple-inspired user interface with:
+  - Smooth animations and transitions
+  - Frosted glass effects
+  - Responsive design
+  - Optimized performance
+  - Accessibility features
 
 ## Tech Stack
 
@@ -19,7 +24,8 @@ A comprehensive tool for biotech companies to streamline regulatory compliance f
 
 ### Frontend
 - React.js
-- Material-UI
+- Material-UI v5 with custom theming
+- Emotion for styled components
 - Axios for API communication
 
 ## Prerequisites
@@ -78,6 +84,41 @@ npm install
 3. Start the servers manually:
 - Backend: `cd backend && source venv/bin/activate && python -m uvicorn app.main:app --reload`
 - Frontend: `cd frontend && npm start`
+
+## Development Notes
+
+### UI/UX Design Principles
+
+The application follows modern design principles inspired by Apple's Human Interface Guidelines:
+
+1. **Typography**
+   - System font stack for optimal readability
+   - Consistent type scale and weights
+   - Proper letter spacing for different text sizes
+
+2. **Colors**
+   - Clean, modern color palette
+   - Proper contrast ratios for accessibility
+   - Subtle gradients and transparency effects
+
+3. **Animations**
+   - Smooth, purposeful transitions
+   - Subtle hover effects
+   - Performance-optimized animations
+
+4. **Components**
+   - Custom-styled Material-UI components
+   - Consistent spacing and elevation
+   - Responsive and adaptive layouts
+
+### Performance Optimization
+
+The frontend is optimized for performance through:
+- Component memoization
+- Lazy loading
+- Efficient state management
+- Optimized re-renders
+- Debounced input handling
 
 ## Running the Application
 

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, memo } from 'react';
 import {
   Box,
   Paper,
@@ -12,192 +12,255 @@ import {
   Alert,
   Snackbar,
   Chip,
-  CircularProgress
+  CircularProgress,
+  alpha,
+  Stack,
 } from '@mui/material';
 import {
   Send as SendIcon,
   AttachFile as AttachFileIcon,
   Close as CloseIcon
 } from '@mui/icons-material';
+import { styled } from '@mui/material/styles';
+
+// Custom styled components
+const StyledPaper = styled(Paper)(({ theme }) => ({
+  padding: theme.spacing(3),
+  borderRadius: theme.shape.borderRadius * 2,
+  backgroundColor: alpha(theme.palette.background.paper, 0.8),
+  backdropFilter: 'blur(20px)',
+  border: '1px solid',
+  borderColor: alpha(theme.palette.divider, 0.1),
+  height: '80vh',
+  display: 'flex',
+  flexDirection: 'column',
+  transition: 'all 0.3s ease-in-out',
+  '&:hover': {
+    transform: 'translateY(-2px)',
+    boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
+  },
+}));
+
+const MessageBubble = styled('div')(({ theme, isUser }) => ({
+  backgroundColor: isUser ? alpha(theme.palette.primary.main, 0.1) : alpha(theme.palette.background.paper, 0.5),
+  color: theme.palette.text.primary,
+  padding: theme.spacing(2, 3),
+  borderRadius: theme.shape.borderRadius * 2,
+  maxWidth: '80%',
+  wordBreak: 'break-word',
+  marginLeft: isUser ? 'auto' : 0,
+  marginRight: isUser ? 0 : 'auto',
+  position: 'relative',
+  boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+  transition: 'all 0.2s ease-in-out',
+  '&:hover': {
+    transform: 'translateY(-1px)',
+    boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+  },
+  '&::before': {
+    content: '""',
+    position: 'absolute',
+    bottom: 0,
+    [isUser ? 'right' : 'left']: -8,
+    borderStyle: 'solid',
+    borderWidth: '8px 8px 0 8px',
+    borderColor: `${isUser ? alpha(theme.palette.primary.main, 0.1) : alpha(theme.palette.background.paper, 0.5)} transparent transparent transparent`,
+    transform: isUser ? 'none' : 'scaleX(-1)',
+  },
+}));
+
+const StyledTextField = styled(TextField)(({ theme }) => ({
+  '& .MuiOutlinedInput-root': {
+    backgroundColor: alpha(theme.palette.background.paper, 0.8),
+    borderRadius: theme.shape.borderRadius * 2,
+    padding: theme.spacing(1, 2),
+    transition: 'all 0.2s ease-in-out',
+    '&.Mui-focused': {
+      backgroundColor: theme.palette.background.paper,
+      boxShadow: `0 0 0 2px ${alpha(theme.palette.primary.main, 0.2)}`,
+      transform: 'translateY(-1px)',
+    },
+    '&:hover': {
+      backgroundColor: theme.palette.background.paper,
+    },
+  },
+}));
+
+const StyledIconButton = styled(IconButton)(({ theme }) => ({
+  backgroundColor: theme.palette.primary.main,
+  color: theme.palette.common.white,
+  '&:hover': {
+    backgroundColor: theme.palette.primary.dark,
+    transform: 'translateY(-1px)',
+  },
+  '&:disabled': {
+    backgroundColor: alpha(theme.palette.primary.main, 0.5),
+  },
+  width: 40,
+  height: 40,
+  marginLeft: theme.spacing(1),
+  transition: 'all 0.2s ease-in-out',
+}));
+
+const StyledChip = styled(Chip)(({ theme }) => ({
+  borderRadius: theme.shape.borderRadius,
+  backgroundColor: alpha(theme.palette.primary.main, 0.1),
+  color: theme.palette.primary.main,
+  margin: theme.spacing(0.5),
+  transition: 'all 0.2s ease-in-out',
+  '&:hover': {
+    backgroundColor: alpha(theme.palette.primary.main, 0.2),
+    transform: 'translateY(-1px)',
+  },
+  '& .MuiChip-label': {
+    padding: '4px 12px',
+  },
+  '& .MuiChip-deleteIcon': {
+    color: theme.palette.primary.main,
+    '&:hover': {
+      color: theme.palette.primary.dark,
+    },
+  },
+}));
+
+const Message = memo(({ message, handleRemoveFile }) => (
+  <ListItem
+    sx={{
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'stretch',
+      py: 2,
+    }}
+  >
+    <Stack spacing={1} width="100%">
+      <MessageBubble isUser={message.role === 'user'}>
+        <Typography variant="body1">
+          {message.content}
+        </Typography>
+        <Typography
+          variant="caption"
+          color="text.secondary"
+          sx={{ display: 'block', mt: 1, textAlign: message.role === 'user' ? 'right' : 'left' }}
+        >
+          {new Date(message.timestamp).toLocaleTimeString()}
+        </Typography>
+      </MessageBubble>
+      {message.attachments?.length > 0 && (
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
+          {message.attachments.map((file, fileIndex) => (
+            <StyledChip
+              key={fileIndex}
+              label={file.name}
+              onDelete={() => handleRemoveFile(fileIndex)}
+              deleteIcon={<CloseIcon />}
+            />
+          ))}
+        </Box>
+      )}
+    </Stack>
+  </ListItem>
+));
+
+const ChatInput = memo(({ input, setInput, loading, handleSend, handleKeyPress, handleFileSelect, fileInputRef }) => (
+  <Box sx={{ position: 'relative' }}>
+    <StyledTextField
+      fullWidth
+      multiline
+      maxRows={4}
+      value={input}
+      onChange={(e) => setInput(e.target.value)}
+      onKeyPress={handleKeyPress}
+      placeholder="Type your message..."
+      disabled={loading}
+      InputProps={{
+        endAdornment: (
+          <IconButton
+            onClick={() => fileInputRef.current?.click()}
+            disabled={loading}
+            sx={{ mr: 1 }}
+          >
+            <AttachFileIcon />
+          </IconButton>
+        ),
+      }}
+    />
+    <StyledIconButton
+      onClick={handleSend}
+      disabled={loading}
+    >
+      {loading ? <CircularProgress size={24} color="inherit" /> : <SendIcon />}
+    </StyledIconButton>
+  </Box>
+));
 
 const Chatbot = ({ questionnaireData, guidelines }) => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [chatId] = useState(() => crypto.randomUUID());
   const [attachments, setAttachments] = useState([]);
   const fileInputRef = useRef(null);
   const messagesEndRef = useRef(null);
 
-  // Initialize chat with welcome message
   useEffect(() => {
     if (messages.length === 0) {
       setMessages([{
-        role: 'system',
-        content: 'Welcome! I can help you understand regulatory requirements for your biotech product. You can:\n\n' +
-                '1. Fill out the questionnaire to get personalized guidance\n' +
-                '2. Upload relevant documents for more specific answers (optional)\n' +
-                '3. Ask questions about regulations and compliance\n\n' +
-                'How can I assist you today?',
+        role: 'assistant',
+        content: 'Hi! I can help you understand regulatory requirements for your biotech product. How can I assist you today?',
         timestamp: new Date()
       }]);
     }
-  }, [messages.length]);
-
-  // Add questionnaire data and guidelines to chat when available
-  useEffect(() => {
-    if (questionnaireData && Object.keys(questionnaireData).length > 0) {
-      const hasSummary = messages.some(msg => 
-        msg.role === 'system' && msg.content.includes('Based on your product information')
-      );
-      
-      if (!hasSummary) {
-        const summary = `Based on your product information:
-• Intended purpose: ${questionnaireData.intended_purpose}
-• Life-threatening use: ${questionnaireData.life_threatening ? 'Yes' : 'No'}
-• Intended users: ${questionnaireData.user_type}
-• Requires sterilization: ${questionnaireData.requires_sterilization ? 'Yes' : 'No'}
-• Body contact duration: ${questionnaireData.body_contact_duration}
-
-${guidelines.length > 0 ? 'I have found relevant regulatory guidelines for your product. You can view them in the Regulatory Guidelines tab. Feel free to ask me any questions about the guidelines or your regulatory requirements.' : 'I am analyzing your product information to provide relevant guidance. Please ask me any questions you have about regulatory requirements.'}`;
-
-        setMessages(prev => [...prev, {
-          role: 'system',
-          content: summary,
-          timestamp: new Date()
-        }]);
-      }
-    }
-  }, [questionnaireData, guidelines, messages]);
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
+  }, []);
 
   useEffect(() => {
+    const scrollToBottom = () => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    };
     scrollToBottom();
   }, [messages]);
 
-  const handleAttachFile = async (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
+  const handleSend = async () => {
+    if (!input.trim() && attachments.length === 0) return;
 
-    // Check file size (max 10MB)
-    if (file.size > 10 * 1024 * 1024) {
-      setError('File size must be less than 10MB');
-      return;
-    }
+    const newMessage = {
+      role: 'user',
+      content: input,
+      attachments: [...attachments],
+      timestamp: new Date(),
+    };
 
-    // Check file type
-    const allowedTypes = ['.pdf', '.doc', '.docx', '.txt'];
-    const fileExtension = file.name.toLowerCase().slice(file.name.lastIndexOf('.'));
-    if (!allowedTypes.includes(fileExtension)) {
-      setError('Only PDF, Word, and text files are allowed');
-      return;
-    }
+    setMessages(prev => [...prev, newMessage]);
+    setInput('');
+    setAttachments([]);
+    setLoading(true);
 
     try {
       const formData = new FormData();
-      formData.append('file', file);
-      formData.append('chat_id', chatId);
+      formData.append('message', input);
+      attachments.forEach(file => formData.append('files', file));
 
-      const response = await fetch('http://localhost:8001/chat/attachments/upload', {
+      const response = await fetch('http://localhost:8000/chat', {
         method: 'POST',
         body: formData,
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to upload file');
-      }
-
-      const data = await response.json();
-      setAttachments(prev => [...prev, {
-        id: data.document_id,
-        filename: data.filename,
-        uploadDate: new Date(data.upload_date)
-      }]);
-
-      // Add system message about attachment
-      setMessages(prev => [...prev, {
-        role: 'system',
-        content: `File "${file.name}" attached successfully. I'll consider this document in our conversation.`,
-        timestamp: new Date()
-      }]);
-    } catch (error) {
-      setError('Failed to upload file: ' + error.message);
-    }
-  };
-
-  const handleRemoveAttachment = async (attachmentId) => {
-    try {
-      const response = await fetch(`http://localhost:8001/chat/attachments/${attachmentId}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to remove attachment');
-      }
-
-      setAttachments(prev => prev.filter(att => att.id !== attachmentId));
-      
-      // Add system message about removal
-      setMessages(prev => [...prev, {
-        role: 'system',
-        content: 'Attachment removed from the conversation.',
-        timestamp: new Date()
-      }]);
-    } catch (error) {
-      setError('Failed to remove attachment: ' + error.message);
-    }
-  };
-
-  const handleSend = async () => {
-    if (!input.trim()) return;
-
-    const userMessage = {
-      role: 'user',
-      content: input,
-      timestamp: new Date()
-    };
-
-    setMessages(prev => [...prev, userMessage]);
-    setInput('');
-    setLoading(true);
-
-    try {
-      const response = await fetch('http://localhost:8001/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          query: input,
-          chat_id: chatId,
-          context_size: 3
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to get response');
-      }
+      if (!response.ok) throw new Error('Failed to get response');
 
       const data = await response.json();
       
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: data.response,
-        sources: data.sources,
-        timestamp: new Date()
-      }]);
-    } catch (error) {
-      setError('Failed to get response: ' + error.message);
-      setMessages(prev => [...prev, {
-        role: 'system',
-        content: 'Sorry, I encountered an error while processing your request. Please try again.',
-        timestamp: new Date()
-      }]);
-    } finally {
+      // Add a small delay for a more natural conversation flow
+      setTimeout(() => {
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: data.response,
+          timestamp: new Date(),
+        }]);
+        setLoading(false);
+      }, 500);
+      
+    } catch (err) {
+      setError('Failed to send message. Please try again.');
+      console.error('Chat error:', err);
       setLoading(false);
     }
   };
@@ -209,159 +272,84 @@ ${guidelines.length > 0 ? 'I have found relevant regulatory guidelines for your 
     }
   };
 
-  return (
-    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <Paper elevation={3} sx={{ flex: 1, p: 2, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-        {/* Messages Area */}
-        <Box sx={{ flex: 1, overflow: 'auto', mb: 2 }}>
-          <List>
-            {messages.map((message, index) => (
-              <React.Fragment key={index}>
-                <ListItem alignItems="flex-start" sx={{
-                  flexDirection: 'column',
-                  backgroundColor: message.role === 'user' ? 'primary.light' : 'background.paper',
-                  borderRadius: 1,
-                  mb: 1
-                }}>
-                  <ListItemText
-                    primary={
-                      <Typography variant="subtitle2" sx={{ color: message.role === 'user' ? 'common.white' : 'text.primary' }}>
-                        {message.role === 'user' ? 'You' : message.role === 'system' ? 'System' : 'Assistant'}
-                        {message.timestamp && (
-                          <Typography component="span" variant="caption" sx={{ ml: 1, opacity: 0.7 }}>
-                            {message.timestamp.toLocaleTimeString()}
-                          </Typography>
-                        )}
-                      </Typography>
-                    }
-                    secondary={
-                      <Typography
-                        component="div"
-                        variant="body2"
-                        sx={{ 
-                          mt: 1,
-                          color: message.role === 'user' ? 'common.white' : 'text.primary',
-                          whiteSpace: 'pre-wrap'
-                        }}
-                      >
-                        {message.content}
-                      </Typography>
-                    }
-                  />
-                  {message.sources && message.sources.length > 0 && (
-                    <Box sx={{ mt: 1, width: '100%' }}>
-                      <Typography variant="caption" color="text.secondary">
-                        Sources:
-                      </Typography>
-                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
-                        {message.sources.map((source, idx) => (
-                          <Chip
-                            key={idx}
-                            label={source.title}
-                            size="small"
-                            variant="outlined"
-                            sx={{ 
-                              backgroundColor: 'background.paper',
-                              '& .MuiChip-label': {
-                                color: 'text.primary'
-                              }
-                            }}
-                          />
-                        ))}
-                      </Box>
-                    </Box>
-                  )}
-                </ListItem>
-                {index < messages.length - 1 && <Divider />}
-              </React.Fragment>
-            ))}
-          </List>
-          <div ref={messagesEndRef} />
-        </Box>
+  const handleFileSelect = (event) => {
+    const files = Array.from(event.target.files);
+    setAttachments(prev => [...prev, ...files]);
+    event.target.value = null;
+  };
 
-        {/* Attachments Area */}
+  const handleRemoveFile = (index) => {
+    setAttachments(prev => prev.filter((_, i) => i !== index));
+  };
+
+  return (
+    <StyledPaper elevation={0}>
+      <Box sx={{ flex: 1, overflow: 'auto', mb: 2, px: 2 }}>
+        <List>
+          {messages.map((message, index) => (
+            <Message
+              key={index}
+              message={message}
+              handleRemoveFile={handleRemoveFile}
+            />
+          ))}
+        </List>
+        <div ref={messagesEndRef} />
+      </Box>
+
+      <Box sx={{ p: 2 }}>
         {attachments.length > 0 && (
-          <Box sx={{ mb: 2 }}>
-            <Typography variant="caption" color="text.secondary">
-              Attached Documents:
-            </Typography>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 0.5 }}>
-              {attachments.map((attachment) => (
-                <Chip
-                  key={attachment.id}
-                  label={attachment.filename}
-                  onDelete={() => handleRemoveAttachment(attachment.id)}
-                  size="small"
-                  variant="outlined"
-                />
-              ))}
-            </Box>
+          <Box sx={{ 
+            display: 'flex', 
+            flexWrap: 'wrap', 
+            gap: 1, 
+            mb: 2,
+            p: 2,
+            backgroundColor: alpha('#FFFFFF', 0.5),
+            borderRadius: 2,
+          }}>
+            {attachments.map((file, index) => (
+              <StyledChip
+                key={index}
+                label={file.name}
+                onDelete={() => handleRemoveFile(index)}
+                deleteIcon={<CloseIcon />}
+              />
+            ))}
           </Box>
         )}
 
-        {/* Input Area */}
-        <Box sx={{ display: 'flex', gap: 1 }}>
-          <input
-            type="file"
-            ref={fileInputRef}
-            style={{ display: 'none' }}
-            onChange={handleAttachFile}
-            accept=".pdf,.doc,.docx,.txt"
-          />
-          <IconButton
-            onClick={() => fileInputRef.current?.click()}
-            disabled={loading}
-            size="small"
-          >
-            <AttachFileIcon />
-          </IconButton>
-          <TextField
-            fullWidth
-            multiline
-            maxRows={4}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder="Type your message..."
-            disabled={loading}
-            size="small"
-          />
-          <IconButton
-            onClick={handleSend}
-            disabled={loading || !input.trim()}
-            color="primary"
-            size="small"
-          >
-            {loading ? <CircularProgress size={24} /> : <SendIcon />}
-          </IconButton>
-        </Box>
-      </Paper>
+        <ChatInput
+          input={input}
+          setInput={setInput}
+          loading={loading}
+          handleSend={handleSend}
+          handleKeyPress={handleKeyPress}
+          handleFileSelect={handleFileSelect}
+          fileInputRef={fileInputRef}
+        />
+      </Box>
 
-      {/* Error Snackbar */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        style={{ display: 'none' }}
+        onChange={handleFileSelect}
+        multiple
+      />
+
       <Snackbar
         open={!!error}
         autoHideDuration={6000}
         onClose={() => setError(null)}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
-        <Alert
-          severity="error"
-          action={
-            <IconButton
-              size="small"
-              aria-label="close"
-              color="inherit"
-              onClick={() => setError(null)}
-            >
-              <CloseIcon fontSize="small" />
-            </IconButton>
-          }
-        >
+        <Alert onClose={() => setError(null)} severity="error" sx={{ width: '100%' }}>
           {error}
         </Alert>
       </Snackbar>
-    </Box>
+    </StyledPaper>
   );
 };
 
-export default Chatbot;
+export default memo(Chatbot);
