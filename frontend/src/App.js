@@ -48,7 +48,7 @@ function App() {
 
   const handleQuestionnaireSubmit = async (formData) => {
     try {
-      const response = await fetch('http://localhost:8001/questionnaire', {
+      const response = await fetch('http://localhost:8000/questionnaire', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
