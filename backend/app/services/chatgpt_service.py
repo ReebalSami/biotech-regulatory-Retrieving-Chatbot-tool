@@ -44,6 +44,9 @@ class ChatGPTService:
             
         Returns:
             Generated response string
+            
+        Raises:
+            HTTPException: If there is an error generating the response
         """
         try:
             # Prepare context
@@ -76,7 +79,10 @@ class ChatGPTService:
             return response.choices[0].message.content.strip()
             
         except Exception as e:
-            raise Exception(f"Error generating response: {str(e)}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Error generating response: {str(e)}"
+            )
 
     def __call__(self):
         """Make the service injectable in FastAPI"""

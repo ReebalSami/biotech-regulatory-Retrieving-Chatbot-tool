@@ -1,4 +1,4 @@
-.PHONY: install clean run test lint
+.PHONY: install clean run test lint kill-ports
 
 # Python virtual environment
 VENV = backend/venv
@@ -45,8 +45,14 @@ lint-backend:
 lint-frontend:
 	cd frontend && npm run lint
 
+# Kill processes on commonly used ports
+kill-ports:
+	@echo "Killing processes on ports 3000 (frontend) and 8000 (backend)..."
+	-lsof -ti :3000 | xargs kill -9 2>/dev/null || true
+	-lsof -ti :8000 | xargs kill -9 2>/dev/null || true
+
 # Cleaning
-clean:
+clean: kill-ports
 	rm -rf $(VENV)
 	rm -rf frontend/node_modules
 	find . -type d -name __pycache__ -exec rm -r {} +
@@ -54,3 +60,5 @@ clean:
 	find . -type f -name ".coverage" -delete
 	find . -type d -name ".pytest_cache" -exec rm -r {} +
 	find . -type d -name ".cache" -exec rm -r {} +
+	find . -type d -name ".ruff_cache" -exec rm -r {} +
+	find . -type f -name ".DS_Store" -delete
