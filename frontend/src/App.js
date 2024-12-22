@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Box, Container, Tab, Tabs, ThemeProvider, createTheme, CssBaseline } from '@mui/material';
 import Questionnaire from './components/Questionnaire';
 import RegulatoryDisplay from './components/RegulatoryDisplay';
+import Chatbot from './components/Chatbot';
 
 // Create theme
 const theme = createTheme({
@@ -10,9 +11,12 @@ const theme = createTheme({
       main: '#007AFF',
       light: '#5856D6',
       dark: '#0055FF',
+      contrastText: '#FFFFFF',
     },
     secondary: {
       main: '#5856D6',
+      light: '#34C759',
+      dark: '#248A3D',
     },
     background: {
       default: '#F2F2F7',
@@ -22,6 +26,7 @@ const theme = createTheme({
       primary: '#1C1C1E',
       secondary: '#6C6C70',
     },
+    divider: '#E5E5EA',
   },
   shape: {
     borderRadius: 12,
@@ -100,6 +105,32 @@ const theme = createTheme({
         },
       },
     },
+    MuiTab: {
+      styleOverrides: {
+        root: {
+          textTransform: 'none',
+          fontWeight: 600,
+          fontSize: '0.9375rem',
+          minWidth: 120,
+          padding: '12px 16px',
+          transition: 'all 0.2s ease-in-out',
+          '&.Mui-selected': {
+            color: '#007AFF',
+          },
+          '&:hover': {
+            backgroundColor: 'rgba(0, 122, 255, 0.04)',
+          },
+        },
+      },
+    },
+    MuiTabs: {
+      styleOverrides: {
+        indicator: {
+          height: 3,
+          borderRadius: '3px 3px 0 0',
+        },
+      },
+    },
   },
 });
 
@@ -127,33 +158,14 @@ function TabPanel(props) {
 function App() {
   const [value, setValue] = useState(0);
   const [guidelines, setGuidelines] = useState([]);
-  const [questionnaireData, setQuestionnaireData] = useState(null);
 
   const handleChange = (event, newValue) => {
     setValue(newValue);
   };
 
-  const handleQuestionnaireSubmit = async (formData) => {
-    try {
-      const response = await fetch('http://localhost:8000/questionnaire', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch guidelines');
-      }
-
-      const data = await response.json();
-      setQuestionnaireData(formData);
-      setGuidelines(data.guidelines);
-      setValue(1); // Switch to RegulatoryDisplay tab
-    } catch (error) {
-      console.error('Error fetching guidelines:', error);
-    }
+  const handleQuestionnaireSubmit = (guidelines) => {
+    setGuidelines(guidelines);
+    setValue(1); // Switch to RegulatoryDisplay tab
   };
 
   return (
@@ -174,16 +186,37 @@ function App() {
             height: 'calc(100vh - 48px)'
           }}>
             <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-              <Tabs value={value} onChange={handleChange} aria-label="app tabs">
-                <Tab label="Questionnaire" id="tab-0" aria-controls="tabpanel-0" />
-                <Tab label="Regulatory Guidelines" id="tab-1" aria-controls="tabpanel-1" />
+              <Tabs 
+                value={value} 
+                onChange={handleChange} 
+                aria-label="app tabs"
+                variant="fullWidth"
+              >
+                <Tab 
+                  label="Questionnaire" 
+                  id="tab-0" 
+                  aria-controls="tabpanel-0"
+                />
+                <Tab 
+                  label="Regulatory Guidelines" 
+                  id="tab-1" 
+                  aria-controls="tabpanel-1"
+                />
+                <Tab 
+                  label="AI Assistant" 
+                  id="tab-2" 
+                  aria-controls="tabpanel-2"
+                />
               </Tabs>
             </Box>
             <TabPanel value={value} index={0}>
               <Questionnaire onSubmit={handleQuestionnaireSubmit} />
             </TabPanel>
             <TabPanel value={value} index={1}>
-              <RegulatoryDisplay guidelines={guidelines} questionnaireData={questionnaireData} />
+              <RegulatoryDisplay guidelines={guidelines} />
+            </TabPanel>
+            <TabPanel value={value} index={2}>
+              <Chatbot />
             </TabPanel>
           </Box>
         </Container>
