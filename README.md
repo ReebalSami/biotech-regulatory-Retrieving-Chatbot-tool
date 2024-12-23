@@ -82,7 +82,7 @@ biotech_regulatory_tool/
 
 ## Latest Updates
 
-### UI/UX Improvements (December 2023)
+### UI/UX Improvements (December 2024)
 - Enhanced mobile responsiveness with hamburger menu
 - Added profile avatar for user representation
 - Improved chat interface with modern styling
