@@ -1,143 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import {
-  Box,
-  Paper,
-  TextField,
-  IconButton,
-  Typography,
-  Avatar,
-  Fade,
-  useTheme,
-  CircularProgress,
-  List,
-  ListItem,
-  ListItemText,
-  Button,
-  Chip,
-} from '@mui/material';
 import SendRoundedIcon from '@mui/icons-material/SendRounded';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
-import { styled } from '@mui/material/styles';
 
-// Styled components
-const shouldForwardProp = prop => prop !== 'isUser';
-
-const MessageContainer = styled('div', { shouldForwardProp })(({ theme, isUser }) => ({
-  display: 'flex',
-  alignItems: 'flex-start',
-  marginBottom: theme.spacing(2),
-  justifyContent: isUser ? 'flex-end' : 'flex-start',
-  width: '100%',
-}));
-
-const MessageBubble = styled(Paper, { shouldForwardProp })(({ theme, isUser }) => ({
-  padding: theme.spacing(1.5, 2),
-  borderRadius: theme.shape.borderRadius * 2,
-  maxWidth: '70%',
-  minWidth: '200px',
-  backgroundColor: isUser ? theme.palette.primary.main : theme.palette.grey[50],
-  color: isUser ? theme.palette.primary.contrastText : theme.palette.text.primary,
-  boxShadow: 'none',
-}));
-
-const MessageGroup = styled('div', { shouldForwardProp })(({ theme, isUser }) => ({
-  display: 'flex',
-  alignItems: 'flex-end',
-  gap: theme.spacing(1),
-  flexDirection: 'row',
-  width: '100%',
-  justifyContent: isUser ? 'flex-end' : 'flex-start',
-}));
-
-const MessageContent = styled('div', { shouldForwardProp })(({ theme, isUser }) => ({
-  display: 'flex',
-  flexDirection: 'column',
-  alignItems: isUser ? 'flex-end' : 'flex-start',
-  flex: '0 1 auto',
-  maxWidth: '70%',
-}));
-
-const StyledTextField = styled(TextField)(({ theme }) => ({
-  '& .MuiOutlinedInput-root': {
-    borderRadius: 30,
-    backgroundColor: theme.palette.background.paper,
-    '&.Mui-focused': {
-      boxShadow: `0 0 0 2px ${theme.palette.primary.main}`,
-    },
-    '& fieldset': {
-      borderColor: 'transparent',
-      transition: theme.transitions.create(['border-color', 'box-shadow']),
-    },
-    '&:hover fieldset': {
-      borderColor: theme.palette.primary.main,
-    },
-  },
-}));
-
-const SendButton = styled(IconButton)(({ theme }) => ({
-  backgroundColor: theme.palette.primary.main,
-  color: theme.palette.primary.contrastText,
-  '&:hover': {
-    backgroundColor: theme.palette.primary.dark,
-    transform: 'scale(1.05)',
-  },
-  transition: theme.transitions.create(['background-color', 'transform'], {
-    duration: theme.transitions.duration.shorter,
-  }),
-  width: 40,
-  height: 40,
-}));
-
-const AssistantAvatar = styled(Avatar)(({ theme }) => ({
-  backgroundColor: theme.palette.secondary.main,
-  width: 32,
-  height: 32,
-  fontSize: '0.875rem',
-}));
-
-const UserAvatar = styled(Avatar)(({ theme }) => ({
-  backgroundColor: theme.palette.primary.main,
-  width: 32,
-  height: 32,
-  fontSize: '0.875rem',
-}));
-
-const ChatContainer = styled(Box)(({ theme }) => ({
-  display: 'flex',
-  flexDirection: 'column',
-  height: '100%',
-  backgroundColor: theme.palette.background.default,
-  borderRadius: theme.shape.borderRadius,
-  overflow: 'hidden',
-}));
-
-const MessageList = styled(Box)(({ theme }) => ({
-  flexGrow: 1,
-  overflowY: 'auto',
-  padding: theme.spacing(2),
-  display: 'flex',
-  flexDirection: 'column',
-  gap: theme.spacing(2),
-}));
-
-const InputContainer = styled(Box)(({ theme }) => ({
-  padding: theme.spacing(2),
-  borderTop: `1px solid ${theme.palette.divider}`,
-  backgroundColor: theme.palette.background.paper,
-}));
-
-const TypingIndicator = styled(Box)(({ theme }) => ({
-  display: 'flex',
-  alignItems: 'center',
-  gap: theme.spacing(1),
-  padding: theme.spacing(1, 2),
-  borderRadius: 20,
-  backgroundColor: theme.palette.background.paper,
-  width: 'fit-content',
-  marginBottom: theme.spacing(2),
-}));
-
-function Chatbot() {
+function Chatbot({ guidelines, questionnaireData, isLoadingGuidelines }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -145,7 +10,6 @@ function Chatbot() {
   const [attachmentIds, setAttachmentIds] = useState([]);
   const fileInputRef = useRef(null);
   const messagesEndRef = useRef(null);
-  const theme = useTheme();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -154,6 +18,72 @@ function Chatbot() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Initial welcome message
+  useEffect(() => {
+    if (messages.length === 0) {
+      const initialMessage = {
+        text: [
+          "✨ Welcome to the Future of Biotech Innovation! ✨",
+          "",
+          "I'm your AI Navigator in the biotech regulatory landscape, ready to empower your groundbreaking ideas! 🧬",
+          "",
+          "Together, we'll:",
+          "🚀 Transform your innovative concepts into compliant realities",
+          "🎯 Navigate regulatory requirements with precision",
+          "💡 Unlock the potential of your biotech venture",
+          "",
+          "Start by completing our smart questionnaire, and I'll craft a personalized regulatory roadmap just for you!",
+          "",
+          "Ready to revolutionize biotech? Let's begin! 🌟"
+        ].join('\n'),
+        isUser: false,
+        timestamp: new Date(),
+      };
+      setMessages([initialMessage]);
+    }
+  }, []);
+
+  // Update context when questionnaire is submitted and guidelines are loaded
+  useEffect(() => {
+    if (questionnaireData && !isLoadingGuidelines && guidelines.length > 0 && messages.length <= 1) {
+      const contextMessage = {
+        text: [
+          `🎯 Perfect! I'm now equipped with insights about your ${questionnaireData.productType || 'biotech product'}!`,
+          "",
+          questionnaireData.productDescription ? 
+            `Your vision of ${questionnaireData.productDescription} is fascinating, and I've analyzed all applicable regulations to help you succeed.` :
+            "I've analyzed all applicable regulations to help you succeed.",
+          "",
+          "Here's what makes your project unique:",
+          "",
+          ...guidelines.map((g, i) => `${i + 1}. ${g.title}`),
+          "",
+          "I'm your dedicated partner in bringing this innovation to life! Ask me anything about:",
+          "• Regulatory requirements specific to your product",
+          "• Compliance strategies",
+          "• Next steps in your journey",
+          "",
+          "Let's make your biotech vision a reality! What would you like to explore first? 🚀"
+        ].join('\n'),
+        isUser: false,
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, contextMessage]);
+    } else if (questionnaireData && isLoadingGuidelines && messages.length <= 1) {
+      const loadingMessage = {
+        text: [
+          "🔄 Analyzing your innovative project...",
+          "",
+          "I'm processing your questionnaire responses and crafting a personalized regulatory strategy.",
+          "This will only take a moment! ✨"
+        ].join('\n'),
+        isUser: false,
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, loadingMessage]);
+    }
+  }, [questionnaireData, guidelines, isLoadingGuidelines]);
 
   const handleFileUpload = async (event) => {
     const newFiles = Array.from(event.target.files);
@@ -214,7 +144,10 @@ function Chatbot() {
         },
         body: JSON.stringify({
           message: userMessage.text,
-          context: [],
+          context: [
+            ...(questionnaireData ? [`Product Information: ${JSON.stringify(questionnaireData)}`] : []),
+            ...(guidelines.length > 0 ? [`Regulatory Guidelines: ${JSON.stringify(guidelines)}`] : []),
+          ],
           attachment_ids: attachmentIds,
         }),
       });
@@ -260,197 +193,101 @@ function Chatbot() {
   };
 
   return (
-    <ChatContainer>
-      <MessageList>
-        {messages.length === 0 && (
-          <Box sx={{ 
-            display: 'flex', 
-            justifyContent: 'center', 
-            alignItems: 'center',
-            height: '100%',
-            opacity: 0.7
-          }}>
-            <Typography variant="body1" color="text.secondary">
-              Ask me anything about biotech regulations and compliance!
-            </Typography>
-          </Box>
-        )}
+    <div className="chat-container">
+      <div className="chat-messages">
         {messages.map((message, index) => (
-          <Fade in timeout={500} key={index}>
-            <MessageContainer isUser={message.isUser}>
-              <MessageGroup isUser={message.isUser}>
-                {message.isUser ? (
-                  <>
-                    <MessageContent isUser={message.isUser}>
-                      <MessageBubble 
-                        isUser={message.isUser}
-                        sx={message.isError ? {
-                          backgroundColor: theme.palette.error.light,
-                          color: theme.palette.error.contrastText,
-                        } : {}}
-                      >
-                        <Typography variant="body1">{message.text}</Typography>
-                      </MessageBubble>
-                      {message.attachments && (
-                        <Box sx={{ mt: 1, mr: 2 }}>
-                          <Typography variant="caption" color="text.secondary">
-                            Attachments: {message.attachments.join(', ')}
-                          </Typography>
-                        </Box>
-                      )}
-                      {message.sources && (
-                        <Box sx={{ mt: 1, mr: 2 }}>
-                          <Typography variant="caption" color="text.secondary">
-                            Sources:
-                          </Typography>
-                          {message.sources.map((source, idx) => (
-                            <Typography 
-                              key={idx} 
-                              variant="caption" 
-                              color="text.secondary" 
-                              sx={{ 
-                                display: 'block',
-                                ml: 1,
-                                fontSize: '0.75rem',
-                                textAlign: 'right',
-                                '&::before': {
-                                  content: '"•"',
-                                  marginRight: '4px',
-                                }
-                              }}
-                            >
-                              {source.content}
-                            </Typography>
-                          ))}
-                        </Box>
-                      )}
-                    </MessageContent>
-                    <UserAvatar>U</UserAvatar>
-                  </>
-                ) : (
-                  <>
-                    <AssistantAvatar>AI</AssistantAvatar>
-                    <MessageContent isUser={message.isUser}>
-                      <MessageBubble 
-                        isUser={message.isUser}
-                        sx={message.isError ? {
-                          backgroundColor: theme.palette.error.light,
-                          color: theme.palette.error.contrastText,
-                        } : {}}
-                      >
-                        <Typography variant="body1">{message.text}</Typography>
-                      </MessageBubble>
-                      {message.attachments && (
-                        <Box sx={{ mt: 1, ml: 2 }}>
-                          <Typography variant="caption" color="text.secondary">
-                            Attachments: {message.attachments.join(', ')}
-                          </Typography>
-                        </Box>
-                      )}
-                      {message.sources && (
-                        <Box sx={{ mt: 1, ml: 2 }}>
-                          <Typography variant="caption" color="text.secondary">
-                            Sources:
-                          </Typography>
-                          {message.sources.map((source, idx) => (
-                            <Typography 
-                              key={idx} 
-                              variant="caption" 
-                              color="text.secondary" 
-                              sx={{ 
-                                display: 'block',
-                                ml: 1,
-                                fontSize: '0.75rem',
-                                textAlign: 'left',
-                                '&::before': {
-                                  content: '"•"',
-                                  marginRight: '4px',
-                                }
-                              }}
-                            >
-                              {source.content}
-                            </Typography>
-                          ))}
-                        </Box>
-                      )}
-                      {message.processedAttachments && (
-                        <Box sx={{ mt: 1, ml: 2 }}>
-                          <Typography variant="caption" color="text.secondary">
-                            Processed files: {message.processedAttachments.join(', ')}
-                          </Typography>
-                        </Box>
-                      )}
-                    </MessageContent>
-                  </>
-                )}
-              </MessageGroup>
-            </MessageContainer>
-          </Fade>
+          <div
+            key={index}
+            className={`message-group ${message.isUser ? 'user' : 'assistant'}`}
+          >
+            <div className={`avatar ${message.isUser ? 'user' : 'assistant'}`}>
+              {message.isUser ? 'U' : 'AI'}
+            </div>
+            <div className={`message ${message.isUser ? 'user' : 'assistant'}`}>
+              <div className="message-content">
+                {message.text.split('\n').map((line, i) => (
+                  <React.Fragment key={i}>
+                    {line}
+                    <br />
+                  </React.Fragment>
+                ))}
+              </div>
+              {message.attachments && message.attachments.length > 0 && (
+                <div className="message-attachments">
+                  📎 {message.attachments.join(', ')}
+                </div>
+              )}
+              {message.processedAttachments && message.processedAttachments.length > 0 && (
+                <div className="message-attachments">
+                  ✅ {message.processedAttachments.join(', ')}
+                </div>
+              )}
+            </div>
+          </div>
         ))}
         {isTyping && (
-          <Fade in timeout={500}>
-            <TypingIndicator>
-              <CircularProgress size={16} />
-              <Typography variant="caption" color="text.secondary">
-                Assistant is typing...
-              </Typography>
-            </TypingIndicator>
-          </Fade>
+          <div className="message-group assistant">
+            <div className="avatar assistant">AI</div>
+            <div className="message assistant">
+              <div className="typing-indicator">
+                AI is thinking<span>.</span><span>.</span><span>.</span>
+              </div>
+            </div>
+          </div>
         )}
         <div ref={messagesEndRef} />
-      </MessageList>
-      <InputContainer>
-        {files.length > 0 && (
-          <Box sx={{ mb: 2 }}>
-            <Typography variant="subtitle2" gutterBottom>
-              Attached Files:
-            </Typography>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-              {files.map((file, index) => (
-                <Chip
-                  key={index}
-                  label={file.name}
-                  onDelete={() => handleRemoveFile(index)}
-                  size="small"
-                />
-              ))}
-            </Box>
-          </Box>
-        )}
-        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-          <input
-            type="file"
-            multiple
-            onChange={handleFileUpload}
-            style={{ display: 'none' }}
-            ref={fileInputRef}
-          />
-          <IconButton
-            color="primary"
+      </div>
+
+      <div className="chat-input-container">
+        <input
+          type="file"
+          multiple
+          onChange={handleFileUpload}
+          ref={fileInputRef}
+          style={{ display: 'none' }}
+        />
+        <input
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyPress={handleKeyPress}
+          placeholder="Ask me anything about biotech regulations..."
+          className="modern-input"
+        />
+        <div className="chat-actions">
+          <button
+            className="modern-button secondary"
             onClick={() => fileInputRef.current?.click()}
           >
-            <AttachFileIcon />
-          </IconButton>
-          <StyledTextField
-            fullWidth
-            placeholder="Type your message..."
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyPress={handleKeyPress}
-            multiline
-            maxRows={4}
-            size="small"
-          />
-          <SendButton
+            <AttachFileIcon /> Attach
+          </button>
+          <button
+            className="modern-button"
             onClick={handleSend}
             disabled={!input.trim() && files.length === 0}
-            size="small"
           >
-            <SendRoundedIcon fontSize="small" />
-          </SendButton>
-        </Box>
-      </InputContainer>
-    </ChatContainer>
+            <SendRoundedIcon /> Send
+          </button>
+        </div>
+
+        {files.length > 0 && (
+          <div className="file-preview">
+            {files.map((file, index) => (
+              <div key={index} className="file-item">
+                📎 {file.name}
+                <button
+                  className="remove-file"
+                  onClick={() => handleRemoveFile(index)}
+                  aria-label="Remove file"
+                >
+                  <span className="close-icon">×</span>
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 

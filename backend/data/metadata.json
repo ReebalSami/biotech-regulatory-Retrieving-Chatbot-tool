@@ -439,5 +439,29 @@
     "upload_date": "2024-12-22T22:20:34.418306",
     "file_path": "data/user_attachments/80ea2e69-a48b-4024-b60b-14eff7fbc951_ISO 10993-11_2006 Biological evaluation of medical devices -- Part 11_ Tests for systemic toxicity - libgen.li.pdf",
     "source": "chat_attachment"
+  },
+  "e8ecddbc-7c2c-42b3-aee5-764691cda8a9": {
+    "id": "e8ecddbc-7c2c-42b3-aee5-764691cda8a9",
+    "filename": "ISO 10993-11_2006 Biological evaluation of medical devices -- Part 11_ Tests for systemic toxicity - libgen.li.pdf",
+    "title": "ISO 10993-11_2006 Biological evaluation of medical devices -- Part 11_ Tests for systemic toxicity - libgen.li.pdf",
+    "description": null,
+    "categories": [],
+    "document_type": "USER_ATTACHMENT",
+    "chat_id": null,
+    "upload_date": "2024-12-23T01:21:26.887867",
+    "file_path": "data/user_attachments/e8ecddbc-7c2c-42b3-aee5-764691cda8a9_ISO 10993-11_2006 Biological evaluation of medical devices -- Part 11_ Tests for systemic toxicity - libgen.li.pdf",
+    "source": "chat_attachment"
+  },
+  "4fe55664-705a-469c-bf9c-551449190895": {
+    "id": "4fe55664-705a-469c-bf9c-551449190895",
+    "filename": "Biological evaluation of medical device -- INTERNATIONAL STANDARD -- ISO 10993-1, 0 -- df1e13d7ca5b556d9306505cf4152955 -- Anna\u2019s Archive.pdf",
+    "title": "Biological evaluation of medical device -- INTERNATIONAL STANDARD -- ISO 10993-1, 0 -- df1e13d7ca5b556d9306505cf4152955 -- Anna\u2019s Archive.pdf",
+    "description": null,
+    "categories": [],
+    "document_type": "USER_ATTACHMENT",
+    "chat_id": null,
+    "upload_date": "2024-12-23T01:25:03.702724",
+    "file_path": "data/user_attachments/4fe55664-705a-469c-bf9c-551449190895_Biological evaluation of medical device -- INTERNATIONAL STANDARD -- ISO 10993-1, 0 -- df1e13d7ca5b556d9306505cf4152955 -- Anna\u2019s Archive.pdf",
+    "source": "chat_attachment"
   }
 }
