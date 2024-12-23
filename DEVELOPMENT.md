@@ -79,6 +79,8 @@ backend/
 │   │   ├── chatgpt.py    # GPT integration
 │   │   └── document.py   # Document processing
 │   └── models/          # Data models
+├── data/
+│   └── user_attachments/ # Uploaded files storage
 └── tests/              # Test files
 ```
 
@@ -91,8 +93,126 @@ frontend/
 │   │   ├── Chatbot.js   # Chat interface
 │   │   └── Questionnaire.js
 │   ├── services/        # API services
+│   ├── styles/          # CSS modules
+│   │   └── modern.css   # Global styles
 │   └── App.js          # Main component
 ```
+
+## Development Guidelines
+
+### Mobile-First Development
+
+1. **Responsive Design**
+   - Use relative units (rem, em, %) over fixed pixels
+   - Implement mobile-first media queries
+   - Test on various screen sizes
+   - Ensure touch targets are at least 44x44px
+
+2. **Performance**
+   - Optimize images and assets
+   - Implement lazy loading
+   - Minimize bundle size
+   - Use code splitting
+
+3. **UI/UX Guidelines**
+   - Clear visual hierarchy
+   - Adequate spacing for touch targets
+   - Visible feedback on interactions
+   - Smooth animations (max 300ms)
+
+### CSS Best Practices
+
+1. **Organization**
+   - Use CSS modules or styled-components
+   - Follow BEM naming convention
+   - Group related styles
+   - Maintain consistent spacing
+
+2. **Variables**
+   ```css
+   :root {
+     /* Colors */
+     --primary-color: #4a90e2;
+     --accent-color: #7c4dff;
+     
+     /* Spacing */
+     --spacing-xs: 0.25rem;
+     --spacing-sm: 0.5rem;
+     --spacing-md: 1rem;
+     --spacing-lg: 1.5rem;
+     --spacing-xl: 2rem;
+     
+     /* Typography */
+     --font-xs: 0.75rem;
+     --font-sm: 0.875rem;
+     --font-base: 1rem;
+     --font-lg: 1.25rem;
+     --font-xl: 1.5rem;
+   }
+   ```
+
+### Component Guidelines
+
+1. **Structure**
+   - Keep components focused and small
+   - Use functional components with hooks
+   - Implement proper prop validation
+   - Document component props
+
+2. **State Management**
+   - Use React hooks effectively
+   - Implement proper error boundaries
+   - Handle loading states
+   - Maintain clean data flow
+
+### Testing
+
+1. **Frontend**
+   - Unit tests for components
+   - Integration tests for user flows
+   - E2E tests for critical paths
+   - Accessibility testing
+
+2. **Backend**
+   - Unit tests for services
+   - API endpoint testing
+   - Integration tests
+   - Performance testing
+
+### Git Workflow
+
+1. **Branches**
+   - main: production-ready code
+   - develop: integration branch
+   - feature/*: new features
+   - fix/*: bug fixes
+
+2. **Commits**
+   - Use conventional commits
+   - Include ticket numbers
+   - Keep commits focused
+   - Write clear messages
+
+### Deployment
+
+1. **Staging**
+   - Test in staging environment
+   - Verify all features
+   - Check mobile responsiveness
+   - Test with real data
+
+2. **Production**
+   - Use proper CI/CD pipeline
+   - Implement monitoring
+   - Set up error tracking
+   - Monitor performance
+
+## Documentation
+
+- Keep documentation up to date
+- Document all API endpoints
+- Include setup instructions
+- Maintain changelog
 
 ## Component Guidelines
 

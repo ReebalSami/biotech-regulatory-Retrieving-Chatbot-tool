@@ -10,6 +10,7 @@ A comprehensive tool for biotech companies to navigate regulatory requirements a
 - Smart Search functionality
 - GPT-4 Integration for intelligent responses
 - Customized compliance recommendations
+- Mobile-friendly responsive design
 
 ## Prerequisites
 
@@ -60,32 +61,53 @@ npm start
 biotech_regulatory_tool/
 ├── backend/
 │   ├── app/
-│   │   ├── main.py
-│   │   ├── routers/
-│   │   ├── services/
-│   │   └── models/
-│   ├── requirements.txt
-│   └── .env
+│   │   ├── main.py          # Application entry point
+│   │   ├── routers/         # API endpoints
+│   │   ├── services/        # Business logic
+│   │   └── models/          # Data models
+│   ├── data/               # Processed data storage
+│   │   └── user_attachments/
+│   └── requirements.txt
 ├── frontend/
 │   ├── src/
-│   │   ├── components/
-│   │   ├── services/
+│   │   ├── components/     # React components
+│   │   ├── services/       # API services
+│   │   ├── styles/         # CSS modules
 │   │   └── App.js
 │   └── package.json
+├── documents/             # Project documentation
+├── DEVELOPMENT.md        # Development guidelines
 └── README.md
 ```
 
-## Development
-
-See [DEVELOPMENT.md](DEVELOPMENT.md) for detailed development guidelines.
-
 ## Latest Updates
 
-- Enhanced chatbot UI with iMessage-style interface
-- Improved error handling for API interactions
-- Updated styling and user experience
-- Integrated GPT-4 for more accurate responses
-- Added comprehensive documentation
+### UI/UX Improvements (December 2023)
+- Enhanced mobile responsiveness with hamburger menu
+- Added profile avatar for user representation
+- Improved chat interface with modern styling
+- Better file attachment handling
+- Smoother animations and transitions
+
+### Backend Enhancements
+- Improved document processing
+- Enhanced GPT-4 integration
+- Better error handling
+- Optimized file storage
+
+### Documentation
+- Updated development guidelines
+- Enhanced project structure documentation
+- Added mobile-specific guidelines
+
+## Development
+
+See [DEVELOPMENT.md](DEVELOPMENT.md) for detailed development guidelines, including:
+- Setup instructions
+- Coding standards
+- Mobile development guidelines
+- Testing procedures
+- Deployment process
 
 ## Contributing
 
